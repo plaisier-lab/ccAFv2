@@ -33,10 +33,7 @@ library(gridExtra)
 library(writexl)
 library(data.table)
 library(readr)
-#sessionInfo()
 library(ssgsea.GBM.classification)
-#library(verification)
-#library(MCMCpack)
 
 # Gene sets
 mesenchymal_geneset = c("CD44", "SPARCL1", "MKI67", "AURKA")
