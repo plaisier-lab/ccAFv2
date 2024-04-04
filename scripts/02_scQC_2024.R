@@ -18,7 +18,7 @@
 ##########################################################
 
 # Run docker
-#docker run -it -v '/home/soconnor/old_home/ccNN/testData:/files' cplaisier/ccafv2_extra
+#docker run -it -v '/home/soconnor/old_home/ccNN/ccAFv2:/files' cplaisier/ccafv2_extra
 
 #--------------------------------
 # Set up section / load packages
@@ -39,10 +39,11 @@ library("org.Hs.eg.db")
 library(aricode)
 
 # Set working directory
-setwd("files/")
+#setwd("files/")
+resdir = 'data'
 
 # Mitochondrial genes as ensembl IDs
-mito_genes = read_csv("mito_genes.csv", show_col_types = FALSE) %>% pull(mito)
+mito_genes = read_csv(file.path(resdir, 'mito_genes.csv'), show_col_types = FALSE) %>% pull(mito)
 
 # Load ccSeurat phase gene sets
 s.genes <- cc.genes$s.genes
@@ -52,14 +53,12 @@ g2m.genes <- cc.genes$g2m.genes
 # QC Function
 #---------------------------------------------------
 
-scQC = function(res_dir, tag, mito_genes, v1 = 2000, v2 = 30000, h1 = 0.001, h2 = 0.1, data_dir = 'outs', save_dir = 'analysis_output', obj_dir = 'seurat_objects', mt = 'MT-', symbol = F){
+scQC = function(res_dir, tag, mito_genes, v1 = 2000, v2 = 30000, h1 = 0.001, h2 = 0.1, data_dir = 'outs/filtered_feature_bc_matrix', save_dir = 'analysis_output', obj_dir = 'seurat_objects', mt = 'MT-', symbol = F, norm_regress = F){
   cat('\n',tag,'\n')
   resdir1 = file.path(res_dir, tag)
   # Create folders
   dir.create(file.path(resdir1, save_dir), showWarnings = FALSE)
   resdir2 = file.path(resdir1, save_dir)
-  #dir.create(file.path(save_dir), showWarnings = FALSE)
-  #resdir2 = file.path(save_dir)
   dir.create(file.path(resdir1, obj_dir), showWarnings = FALSE)
   resdir3 = file.path(resdir1, obj_dir)
   #---------------------
@@ -72,7 +71,7 @@ scQC = function(res_dir, tag, mito_genes, v1 = 2000, v2 = 30000, h1 = 0.001, h2 
     gene_id = 'gene_symbols'
   }
   data = Read10X(file.path(resdir1, data_dir), gene.column=gene_column) # column 1 is ensembl (in 10X mtx file)
-  cat('Raw data', dim(data)[2], 'cells', dim(data)[1], 'genes \n')
+  cat('Raw data: ', dim(data)[2], 'cells', dim(data)[1], 'genes \n')
   # Substitute underscores if necessary
   rownames(data) = gsub("_", "-", rownames(data))
   # Create seurat object
@@ -85,7 +84,7 @@ scQC = function(res_dir, tag, mito_genes, v1 = 2000, v2 = 30000, h1 = 0.001, h2 
   #---------------------
   # Quality control
   #---------------------
-  cat('Quality control \n')
+  cat('\n Quality control \n')
   # Quality control plots for choosing cutoffs
   pdf(file.path(resdir2, paste0(tag, '_QC_plot_to_choose_cutoffs.pdf')))
   plot(seurat1@meta.data$nCount_RNA, seurat1@meta.data$percent.mito,
@@ -103,22 +102,26 @@ scQC = function(res_dir, tag, mito_genes, v1 = 2000, v2 = 30000, h1 = 0.001, h2 
   # Quality control filtering
   keep.detect = which(seurat1@meta.data$percent.mito < h2 & seurat1@meta.data$percent.mito > h1 & seurat1@meta.data$nCount_RNA < v2 & seurat1@meta.data$nCount_RNA > v1)
   seurat1 = subset(seurat1, cells=colnames(seurat1)[keep.detect])
-  cat('Filtered to', dim(seurat1)[2], 'cells', dim(seurat1)[1], 'genes \n')
+  cat('Filtered to: ', dim(seurat1)[2], 'cells', dim(seurat1)[1], 'genes \n')
   saveRDS(seurat1, file.path(resdir3, paste0(tag, '_filtered_', paste0(gene_id), '.rds')))
   # Save as new object so can go back to previous non-normalized / scaled seurat object if need too
   seurat2 = seurat1
   #------------------------------------------------------
   # Normalization with sctransform
   #---------------------------------------------------
-  cat('Normalization \n')
+  cat('\n Normalization \n')
+  if(norm_regress){
+    seurat2 = SCTransform(seurat2, verbose = FALSE, vars.to.regress = c('nCount_RNA'))
+  } else {
   seurat2 = SCTransform(seurat2, verbose = FALSE)
-  cat('Normalized genes:', dim(seurat2@assays$SCT@data)[1], 'features,', length(seurat2@assays$SCT@var.features), 'highly variable genes \n')
+  }
+  cat('Normalized genes: ', dim(seurat2@assays$SCT@data)[1], 'features,', length(seurat2@assays$SCT@var.features), 'highly variable genes \n')
   # Classify with ccSeurat and save out as csv
   if(symbol){
     seurat2 <- CellCycleScoring(object=seurat2, s.features=s.genes, g2m.features=g2m.genes, set.ident=FALSE)
     write.csv(seurat2$Phase, file.path(resdir2, paste0(tag, '_ccSeurat_calls.csv')))
   }
-  cat('Saving normalized RDS object \n')
+  cat('\n Saving normalized RDS object \n')
   saveRDS(seurat2, file.path(resdir3, paste0(tag, '_normalized_', paste0(gene_id), '.rds')))
   return(seurat2)
 }
@@ -129,13 +132,10 @@ scQC = function(res_dir, tag, mito_genes, v1 = 2000, v2 = 30000, h1 = 0.001, h2 
 #--------------------------------------
 
 qc_ensembl = list()
-bm_ensembl[['ScienCell_hBMMSC']] = scQC(res_dir = 'hBMMSCs', tag = 'ScienCell_hBMMSC', mito_genes = mito_genes, v1 = 6000, v2 = 185000, h1 = 0.0001, h2 = 0.1)
-qc_ensembl[['ATCC_hBMMSC']] = scQC(res_dir = 'hBMMSCs', tag = 'ATCC_hBMMSC', mito_genes = mito_genes, v1 = 6000, v2 = 150000, h1 = 0.0001, h2 = 0.1)
-qc_ensembl[['MCF10A']] = scQC(res_dir = 'MCF10A', tag = 'MCF10A', mito_genes = mito_genes, v1 = 6000, v2 = 100000, h1 = 0.0001, h2 = 0.19)
-qc_ensembl[['U5_fucci']] = scQC(res_dir = 'U5', tag = 'U5_G1', mito_genes = mito_genes, v2 = 17000, h1 = 0.01 ,h2 = 0.07)
+qc_ensembl [['BT322']] = scQC(res_dir = 'data/GSC', tag = 'BT322', mito_genes = mito_genes, v1 = 4000, v2 = 62000, h1 = 0.009, h2 = 0.1, symbol = F, norm_regress = T)
+qc_ensembl [['BT324']] = scQC(res_dir = 'data/GSC', tag = 'BT324', mito_genes = mito_genes, v1 = 5000, v2 = 40000, h1 = 0.009, h2 = 0.06, symbol = F, norm_regress = T)
+
 
 qc_symbol = list()
-qc_symbol[['ScienCell_hBMMSC']] = scQC(res_dir = 'hBMMSCs', tag = 'ScienCell_hBMMSC', mito_genes = mito_genes, v1 = 6000, v2 = 185000, h1 = 0.0001, h2 = 0.1, symbol = T)
-qc_symbol[['ATCC_hBMMSC']] = scQC(res_dir = 'hBMMSCs', tag = 'ATCC_hBMMSC', mito_genes = mito_genes, v1 = 6000, v2 = 150000, h1 = 0.0001, h2 = 0.1, symbol = T)
-qc_symbol[['MCF10A']] = scQC(res_dir = 'MCF10A', tag = 'MCF10A', mito_genes = mito_genes, v1 = 6000, v2 = 100000, h1 = 0.0001, h2 = 0.19, symbol = T)
-qc_symbol[['U5_fucci']] = scQC(res_dir = 'U5', tag = 'U5_G1', mito_genes = mito_genes, v2 = 17000, h1 = 0.01 ,h2 = 0.07, symbol = T)
+qc_symbol[['BT322']] = scQC(res_dir = 'data/GSC', tag = 'BT322', mito_genes = mito_genes, v1 = 4000, v2 = 62000, h1 = 0.009, h2 = 0.1, symbol = T, norm_regress = T)
+qc_symbol[['BT324']] = scQC(res_dir = 'data/GSC', tag = 'BT324', mito_genes = mito_genes, v1 = 5000, v2 = 40000, h1 = 0.009, h2 = 0.06, symbol = T, norm_regress = T)
