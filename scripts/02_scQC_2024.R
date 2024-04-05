@@ -134,8 +134,16 @@ scQC = function(res_dir, tag, mito_genes, v1 = 2000, v2 = 30000, h1 = 0.001, h2 
 qc_ensembl = list()
 qc_ensembl [['BT322']] = scQC(res_dir = 'data/GSC', tag = 'BT322', mito_genes = mito_genes, v1 = 4000, v2 = 62000, h1 = 0.009, h2 = 0.1, symbol = F, norm_regress = T)
 qc_ensembl [['BT324']] = scQC(res_dir = 'data/GSC', tag = 'BT324', mito_genes = mito_genes, v1 = 5000, v2 = 40000, h1 = 0.009, h2 = 0.06, symbol = F, norm_regress = T)
+qc_ensembl[['LGG275_GF']] = scQC(res_dir = 'data/LGG/LGG275', tag = 'LGG275_GF', mito_genes = mito_genes, v1 = 5000, v2 = 76000, h1 = 0.001, h2 = 0.15)
+qc_ensembl[['LGG275_noGF']] = scQC(res_dir = 'data/LGG/LGG275', tag = 'LGG275_noGF', mito_genes = mito_genes, v1 = 6000, v2 = 35000, h1 = 0.001, h2 = 0.15)
+qc_ensembl[['BT237_GF']] = scQC(res_dir = 'data/LGG/BT237', tag = 'BT237_GF', mito_genes = mito_genes, v1 = 6000, v2 = 90000, h1 = 0.01, h2 = 0.15)
+qc_ensembl[['BT237_noGF']] = scQC(res_dir = 'data/LGG/BT237', tag = 'BT237_noGF', mito_genes = mito_genes, v1 = 6000, v2 = 90000, h1 = 0.03, h2 = 0.17)
 
 
 qc_symbol = list()
 qc_symbol[['BT322']] = scQC(res_dir = 'data/GSC', tag = 'BT322', mito_genes = mito_genes, v1 = 4000, v2 = 62000, h1 = 0.009, h2 = 0.1, symbol = T, norm_regress = T)
 qc_symbol[['BT324']] = scQC(res_dir = 'data/GSC', tag = 'BT324', mito_genes = mito_genes, v1 = 5000, v2 = 40000, h1 = 0.009, h2 = 0.06, symbol = T, norm_regress = T)
+qc_symbol[['LGG275_GF']] = scQC(res_dir = 'data/LGG/LGG275', tag = 'LGG275_GF', mito_genes = mito_genes, v1 = 5000, v2 = 76000, h1 = 0.001, h2 = 0.15, symbol = T)
+qc_symbol[['LGG275_noGF']] = scQC(res_dir = 'data/LGG/LGG275', tag = 'LGG275_noGF', mito_genes = mito_genes, v1 = 6000, v2 = 35000, h1 = 0.001, h2 = 0.15, symbol = T)
+qc_symbol[['BT237_GF']] = scQC(res_dir = 'data/LGG/BT237', tag = 'BT237_GF', mito_genes = mito_genes, v1 = 6000, v2 = 90000, h1 = 0.01, h2 = 0.15, symbol = T)
+qc_symbol[['BT237_noGF']] = scQC(res_dir = 'data/LGG/BT237', tag = 'BT237_noGF', mito_genes = mito_genes, v1 = 6000, v2 = 90000, h1 = 0.03, h2 = 0.17, symbol = T)

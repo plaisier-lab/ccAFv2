@@ -60,6 +60,12 @@ ensembl_features2 = mapIds(org.Hs.eg.db, keys = features2, keytype = "SYMBOL", c
 ensembl_features2 = na.omit(data.frame(ensembl_features2))
 ensembl_features2_plot = ensembl_features2$ensembl_features2
 
+features3 <- c("CCND1", "CCNE2", "CCNA2", "CCNB1", "CDK1", "CDK2")
+# convert to ensembl IDs
+ensembl_features3 = mapIds(org.Hs.eg.db, keys = features3, keytype = "SYMBOL", column="ENSEMBL", multiVals='first')
+#ensembl_features3 = na.omit(data.frame(ensembl_features3))
+#ensembl_features3_plot = ensembl_features3$ensembl_features3
+
 # Plotting order & colors
 ccSeurat_order = c("G1", "S", "G2M")
 ccSeurat_colors = c("G1"="#f37f73", "S"="#8571b2", "G2M"="#3db270")
@@ -207,6 +213,7 @@ scProcessData = function(res_dir, tag, cutoff = 0.5, assay = 'SCT', do_sctransfo
   lst2 = list(v2, v3, v1)
   grid.arrange(grobs = lst2, layout_matrix = rbind(c(1, 2), c(3, NA)), top = '')
   print(DoHeatmap(object = seurat2, features = names(top10_symbol), group.colors = ccAFv2_colors[sub4], size = 4) + scale_y_discrete(labels = top10_symbol))
+  print(RidgePlot(seurat2, features = ensembl_features3_plot, ncol=2, cols = ccAFv2_colors[sub4]))
   dev.off()
   # Change factored metadata to characters
   seurat2$ccAFv2 = as.character(seurat2$ccAFv2)
@@ -224,3 +231,7 @@ scProcessData = function(res_dir, tag, cutoff = 0.5, assay = 'SCT', do_sctransfo
 
 scProcessData(res_dir = 'data/GSC', tag = 'BT322', resolution = 0.6)
 scProcessData(res_dir = 'data/GSC', tag = 'BT324', resolution = 0.6, clusters_to_remove = c(2, 8, 10, 11, 13), norm_regress = T)
+scProcessData(res_dir = 'data/LGG/LGG275', tag = 'LGG275_GF', resolution = 0.61)
+scProcessData(res_dir = 'data/LGG/LGG275', tag = 'LGG275_noGF', resolution = 0.15)
+scProcessData(res_dir = 'data/LGG/BT237', tag = 'BT237_GF', resolution = 0.6)
+scProcessData(res_dir = 'data/LGG/BT237', tag = 'BT237_noGF', resolution = 0.6)
