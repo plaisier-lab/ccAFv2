@@ -111,8 +111,8 @@ mgenes = read.csv(system.file("extdata", "ccAFv2_genes.csv", package = "ccAFv2")
 #---------------------------------------------------
 
 # Directories
-resdirs = c('U5')
-resdir2 = 'compare_classifiers'
+tag = 'U5'
+savedir = 'compare_classifiers'
 
 #------------------------------------------------------
 # Cross validation
@@ -126,7 +126,7 @@ ncores = 10
 truelab = read.csv('data/U5/U5_ccSeurat_calls.csv', row.names = 'X')
 for(class1 in classifiers){
   cat('\n Classifier:', toupper(class1),'\n')
-  dir.create(file.path(resdir2, class1), showWarnings = FALSE)
+  dir.create(file.path(savedir, class1), showWarnings = FALSE)
   cat('\n Loading data \n')
   if(class1 == 'ccafv2'){
     # CCAFV2
@@ -274,5 +274,5 @@ for(class1 in classifiers){
     }
   }
   cat('\n Saving out results \n')
-  write.csv(results, file.path(resdir2, class1, 'CV_classification_report_with_Phase_as_ref.csv'))
+  write.csv(results, file.path(savedir, class1, 'U5_CV_classification_report_with_Phase_as_ref.csv'))
 }
