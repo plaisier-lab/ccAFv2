@@ -38,7 +38,7 @@ devtools::install_github("plaisier-lab/ccafv2_R/ccAFv2")
 library(ccAFv2)
 
 # Set working directory
-setwd("files/")
+#setwd("files/")
 resdir = 'data'
 
 # Set output directory
@@ -81,12 +81,13 @@ for(datas1 in datas){
     seurat2 = AddMetaData(seurat2, metadata = phase_calls$x, col.name = 'Phase')
   }else if(datas1 %in% c('BT363_tumor', 'BT368_tumor')){
     resdir2 = file.path(resdir, 'GBM', datas1)
-    seurat2 = readRDS(file.path(resdir2, paste0(datas1, '_normalized_ensembl.rds')))
+    #seurat2 = readRDS(file.path(resdir2, paste0(datas1, '_normalized_ensembl.rds')))
+    seurat2 = readRDS(file.path(resdir2, paste0(datas1, '_normalized_with_ccAFv2_R_calls.rds')))
     phase_calls = read.csv(file.path(resdir2, paste0(datas1, '_ccSeurat_calls.csv')), row.names = 1)
     seurat2 = AddMetaData(seurat2, metadata = phase_calls$x, col.name = 'Phase')
   }else if(datas1 == 'W8-1'){
     resdir2 = file.path(resdir, 'GSE155121/NSC', datas1)
-    seurat2 = readRDS(file.path(resdir2, paste0(datas1, '_processed_010524.rds')))
+    seurat2 = readRDS(file.path(resdir2, paste0(datas1, '_normalized_ensembl.rds')))
   }
   # Classify with ccAFv2
   seurat2 = PredictCellCycle(seurat2)
