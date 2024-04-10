@@ -59,7 +59,7 @@ devtools::install_github("plaisier-lab/ccafv2_R/ccAFv2")
 library(ccAFv2)
 
 # Set working directory
-setwd("files/")
+#setwd("files/")
 
 # Classifiers to compare
 classifiers = c('ccafv2', 'seurat', 'tricycle', 'ccschwabe', 'recat', 'cyclone', 'peco')
@@ -104,20 +104,15 @@ abs_log <- function(x){
 }
 
 # Load ccAFv2
-#ccAFv2 = load_model_hdf5("model/final/ccAFv2_full_dataset_102423_fc_25_v2_layers_600_200.h5")
-mgenes = read.csv("model/final/ccAFv2_genes_full_dataset_102423_fc_25_v2_layers_600_200.csv")[,2]
+mgenes = read.csv(system.file("extdata", "ccAFv2_genes.csv", package = "ccAFv2"), header = TRUE, row.names = 1)[, paste0('human_ensembl')]
 
 #------------------------------------------------------
 # Set up directory structure / folders
 #---------------------------------------------------
 
-# Directory where barcodes.tsv, features.tsv, and matrix.mtx are located
+# Directories
 resdirs = c('U5')
 resdir2 = 'compare_classifiers'
-data_dir <- 'outs/' # where data is located
-save_dir = 'analysis_output'
-obj1 = 'seurat_objects'
-
 
 #------------------------------------------------------
 # Cross validation
@@ -128,21 +123,14 @@ nfolds = 10
 ncores = 10
 
 # Create new folders for CV results
-analysis1 = 'cross_validation'
-dir.create(analysis1, showWarnings = FALSE)
 truelab = read.csv('data/U5/U5_ccSeurat_calls.csv', row.names = 'X')
 for(class1 in classifiers){
   cat('\n Classifier:', toupper(class1),'\n')
-  dir.create(file.path(analysis1, class1), showWarnings = FALSE)
+  dir.create(file.path(resdir2, class1), showWarnings = FALSE)
   cat('\n Loading data \n')
   if(class1 == 'ccafv2'){
     # CCAFV2
     data1 = readRDS('data/U5/U5_normalized_ensembl.rds')
-    write.csv(data1$ccAF, file.path('data/U5/U5_cell_labels.csv'))
-    data1 = SCTransform(data1, return.only.var.genes=FALSE, verbose=FALSE)
-    tmp = data1[rownames(data1) %in% mgenes,]
-    #write.csv(tmp@assays$SCT@data, file.path('data/U5/U5_SCT_data_expression_861_genes.csv'))
-    #write.csv(tmp@assays$SCT@scale.data, file.path('data/U5/U5_SCT_expression_861_genes.csv'))
     data1$Phase = truelab$x
     #data1@assays$SCT@var.features=mgenes
     #cat(' Subset to', length(data1@assays$SCT@var.features), 'highly variable genes \n')
@@ -183,7 +171,7 @@ for(class1 in classifiers){
     data1 = t(data1)
     cat(' Subset to', length(rownames(data1)), 'genes \n')
     source("get_score.R")
-    setwd("../../")
+    setwd("../../../")
   } else if(class1 == 'cyclone'){
     # CYCLONE
     data1 = readRDS('data/U5/U5_filtered_ensembl.rds')
@@ -286,5 +274,5 @@ for(class1 in classifiers){
     }
   }
   cat('\n Saving out results \n')
-  write.csv(results, file.path(resdir2,'/', class1, 'CV_classification_report_with_Phase_as_ref.csv'))
+  write.csv(results, file.path(resdir2, class1, 'CV_classification_report_with_Phase_as_ref.csv'))
 }
