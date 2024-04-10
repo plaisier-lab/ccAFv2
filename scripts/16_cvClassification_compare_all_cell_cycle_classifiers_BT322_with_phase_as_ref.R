@@ -18,7 +18,7 @@
 ## mention who built it. Thanks. :-)                    ##
 ##########################################################
 
-#docker run -it -v '/home/soconnor/old_home/ccNN:/files' cplaisier/ccafv2_extra
+#docker run -it -v '/home/soconnor/old_home/ccNN/ccAFv2:/files' cplaisier/ccafv2_extra
 
 #--------------------------------
 # Set up section / load packages
@@ -59,10 +59,7 @@ devtools::install_github("plaisier-lab/ccafv2_R/ccAFv2")
 library(ccAFv2)
 
 # Set working directory
-setwd("files/")
-
-# Classifiers to compare
-classifiers = c('ccafv2', 'tricycle', 'ccschwabe', 'recat', 'cyclone', 'peco')
+#setwd("files/")
 
 # Load ccSeurat phase gene sets
 s.genes <- cc.genes$s.genes
@@ -71,7 +68,7 @@ vec<-unlist(cc.genes)
 cc_genes_list = data.frame(vec)$vec
 
 # Cyclone functions and data necessary
-load("pairs_functions.RData")
+load("compare_classifiers/pairs_functions.RData")
 hs.pairs <- readRDS(system.file("exdata", "human_cycle_markers.rds", package="scran"))
 mouse_human_genes = read.csv("http://www.informatics.jax.org/downloads/reports/HOM_MouseHumanSequence.rpt",sep="\t")
 
@@ -96,15 +93,6 @@ convert_mouse_to_human <- function(gene_list){
 
 genes.cc_human_symbol = convert_mouse_to_human(genes.cc_symbol)
 
-# Load in Leng 2015 data (FUCCI sorted; a ground truth dataset)
-#fucci = read.csv('GSE64016_H1andFUCCI_normalized_EC.csv', row.names = 'X')
-#HumanLengESC = CreateSeuratObject(fucci)
-#table(HumanLengESC$orig.ident)
-#select fucci-expression cells
-#colnames(HumanLengESC)[HumanLengESC$orig.ident %in% c('G1', 'S', 'G2')]
-## filter them out:
-#filtered_HumanLengESC <- HumanLengESC[,colnames(HumanLengESC)[HumanLengESC$orig.ident %in% c('G1', 'S', 'G2')]]
-
 # Functions
 abs_log <- function(x){
   x[x==0] <- 1
@@ -113,51 +101,57 @@ abs_log <- function(x){
 }
 
 # Load ccAFv2
-#ccAFv2 = load_model_hdf5("model/final/ccAFv2_full_dataset_102423_fc_25_v2_layers_600_200.h5")
-mgenes = read.csv("model/final/ccAFv2_genes_full_dataset_102423_fc_25_v2_layers_600_200.csv")[,2]
+mgenes = read.csv(system.file("extdata", "ccAFv2_genes.csv", package = "ccAFv2"), header = TRUE, row.names = 1)[, paste0('human_ensembl')]
 
 #------------------------------------------------------
 # Set up directory structure / folders
 #---------------------------------------------------
 
-# Directory where barcodes.tsv, features.tsv, and matrix.mtx are located
-resdirs = c('testData')
-data_dir <- 'outs/' # where data is located
-save_dir = 'analysis_output'
-obj1 = 'seurat_objects'
+tag = 'BT322'
+resdir = 'data'
+resdir2 = file.path(resdir, 'GSC', tag)
+savedir = 'compare_classifiers'
 
 #------------------------------------------------------
 # Cross validation
 #---------------------------------------------------
 
 # Set parameters for analysis
-nfolds = 10
+nfolds = 1
 ncores = 10
 
+# Classifiers to compare
+classifiers = c('ccafv2', 'tricycle', 'ccschwabe', 'recat', 'cyclone', 'peco')
+
 # Create new folders for CV results
-analysis1 = 'cross_validation/BT322'
-dir.create(analysis1, showWarnings = FALSE)
-truelab = read.csv('testData/BT322_ccSeurat_phase.csv', row.names = 'X')
+truelab = read.csv(file.path(resdir2, 'BT322_ccSeurat_calls.csv'), row.names = 'X')
 for(class1 in classifiers){
   cat('\n Classifier:', toupper(class1),'\n')
-  dir.create(file.path(analysis1, class1), showWarnings = FALSE)
+  # Create new folders for CV results
+  dir.create(file.path(savedir, class1), showWarnings = FALSE)
   cat('\n Loading data \n')
   if(class1 == 'ccafv2'){
     # CCAFV2
-    data1 = readRDS(file.path('testData/GSC_bam/BT322/seurat_objects/BT322_normalized_ensembl.rds'))
+    data1 = readRDS(file.path(resdir2, paste0(tag, '_normalized_ensembl.rds')))
     data1$Phase = truelab$x
+    # Save out ccAF vs. phase as csv
+    #tmp1 = data.frame(data1$Phase)
+    #colnames(tmp1) = 'Phase'
+    #tmp2 = data.frame(data1$ccAF)
+    #colnames(tmp2) = 'ccAF'
+    #results = data.frame(tmp1, tmp2)
+    #write.csv(results, file.path(savedir, 'ccaf/CV_classification_report_with_Phase_as_ref.csv'))
   } else if(class1 %in% c('tricycle', 'ccschwabe')){
     # TRICYCLE OR SCHWABE
     # tricycle requires gene symbols and data to be log normalized
-    data1 = readRDS('testData/BT322_filtered.rds')
+    data1 = readRDS(file.path(resdir2, paste0(tag, '_filtered_gene_symbols.rds')))
     data1$Phase = truelab$x
     data1 = NormalizeData(data1)
     data1 = as.SingleCellExperiment(data1)
   } else if(class1 == 'peco'){
     # PECO
     # peco requires ensembl IDs and data to be quantile normalized
-    # doesn't have cell cycle phase; just psuedotime - not super useful
-    data1 = readRDS('testData/BT322_filtered_ensembl.rds')
+    data1 = readRDS(file.path(resdir2, paste0(tag, '_filtered_ensembl.rds')))
     data1$Phase = truelab$x
     # subset to 101 significant cyclic genes
     cat(' Subset to', dim(data1)[1], 'genes \n')
@@ -166,15 +160,15 @@ for(class1 in classifiers){
     data1 = data_transform_quantile(data1)
   } else if(class1 == 'recat'){
     # RECAT
-    data1 = readRDS('testData/BT322_normalized.rds')
+    data1 = readRDS(file.path(resdir2, paste0(tag, '_normalized_gene_symbols.rds')))
     data1$Phase = truelab$x
     ccAF_calls = data.frame(data1$Phase)
     data1 = GetAssayData(object = data1, slot = "counts")
     # Normalize by log2(TPM+1)
     data1 = abs_log(NormalizeTPM(data1))
     # load R scripts
-    load('ola_mES_2i.RData')
-    setwd('reCAT-master/R/')
+    load('compare_classifiers/ola_mES_2i.RData')
+    setwd('compare_classifiers/reCAT-master/R/')
     source('get_test_exp.R')
     recat_mouse_gene_symbols = mapIds(org.Mm.eg.db, keys = colnames(test_exp), keytype = "ENSEMBL", column="SYMBOL", multiVals='first')
     recat_human_gene_symbols = convert_mouse_to_human(recat_mouse_gene_symbols)
@@ -183,7 +177,7 @@ for(class1 in classifiers){
     data1 = t(data1)
     cat(' Subset to', length(rownames(data1)), 'genes \n')
     source("get_score.R")
-    setwd("../../")
+    setwd("../../../")
   } else if(class1 == 'cyclone'){
     # CYCLONE
     data1 = readRDS('testData/BT322_filtered_ensembl.rds')
@@ -286,174 +280,5 @@ for(class1 in classifiers){
     }
   }
   cat('\n Saving out results \n')
-  write.csv(results, file.path(analysis1, class1, 'CV_classification_report_020824_with_Phase_as_ref.csv'))
+  write.csv(results, file.path(savedir, class1, 'BT322_CV_classification_report_with_Phase_as_ref.csv'))
 }
-
-
-# write out ccAF calls
-data1 = readRDS(file.path('testData/GSC_bam/BT322/seurat_objects/BT322_normalized_ensembl.rds'))
-data1$Phase = truelab$x
-tmp1 = data.frame(data1$Phase)
-colnames(tmp1) = 'Phase'
-tmp2 = data.frame(data1$ccAF)
-colnames(tmp2) = 'ccAF'
-results = data.frame(tmp1, tmp2)
-write.csv(results, file.path(analysis1, 'ccaf/CV_classification_report_020824_with_Phase_as_ref.csv'))
-
-
-# Apply to full dataset
-# ccAFv2
-data1 = PredictCellCycle(data1, gene_id = 'symbol')
-write.csv(data1$ccAFv2, 'BT322_ccAFv2_calls_020824.csv')
-
-# tricycle
-# Apply to full dataset
-data1 = project_cycle_space(data1, gname.type='SYMBOL', species='human')
-data1 = estimate_cycle_position(data1)
-data1 <- as.Seurat(data1)
-# Translate tricycle
-mylist <- list()
-for(val1 in array(data1$tricyclePosition)){
-  if((val1 >= 0.5*pi) & (val1 < pi)){
-    mylist <- append(mylist,'S')
-  } else if((val1 >= pi) & (val1 < 1.5*pi)){
-    mylist <- append(mylist,'G2/M')
-  } else if((val1 >= 1.5*pi) & (val1 < 1.75*pi)){
-    mylist <- append(mylist,'M')
-  } else if((val1 >= 1.75*pi) | (val1 < 2*pi)){
-    mylist <- append(mylist,'G1/G0')
-  }
-}
-tmp = unlist(mylist, recursive = FALSE)
-data1$tricycle = tmp
-write.csv(data1$tricycle, 'BT322_tricycle_calls_020824.csv')
-
-# schwabe
-# Apply to full dataset
-data1 = project_cycle_space(data1, gname.type='SYMBOL', species='human')
-data1 = estimate_Schwabe_stage(data1, gname.type='SYMBOL', species='human')
-data1 <- as.Seurat(data1)
-# Rename NA as unknown
-levels(data1$CCStage)<-c(levels(data1$CCStage),"Unknown")
-data1$CCStage[is.na(data1$CCStage)] <- "Unknown"
-write.csv(data1$CCStage, 'BT322_schwabe_calls_020824.csv')
-
-# recat
-score_result <- get_score(data1)
-recat_calls = gsub('Score', '', colnames(score_result$mean_score)[apply(score_result$mean_score, 1, which.max)])
-df = data.frame(recat_calls)
-rownames(df) = colnames(data1)
-write.csv(df, 'BT322_recat_calls_020824.csv')
-
-# cyclone
-results = cyclone(assays(as.SingleCellExperiment(data1))$logcounts, pairs = hs.pairs)
-tmp = data.frame(results$phases)
-rownames(tmp) = colnames(data1)
-write.csv(tmp, 'BT322_cyclone_calls_020824.csv')
-
-# peco
-pred <- cycle_npreg_outsample(Y_test = data1, sigma_est = training_human$sigma[rownames(data1),], funs_est = training_human$cellcycle_function[rownames(data1)], method.trend = "trendfilter",get_trend_estimates = FALSE, ncores = 10)
-head(colData(pred$Y)$cellcycle_peco)
-mylist <- list()
-for(val1 in array(colData(pred$Y)$cellcycle_peco)){
-  if((val1 >= 0.5*pi) & (val1 < pi)){
-    mylist <- append(mylist,'S')
-  } else if((val1 >= pi) & (val1 < 1.5*pi)){
-    mylist <- append(mylist,'G2/M')
-  } else if((val1 >= 1.5*pi) & (val1 < 1.75*pi)){
-    mylist <- append(mylist,'M')
-  } else if((val1 >= 1.75*pi) | (val1 < 2*pi)){
-    mylist <- append(mylist,'G1/G0')
-  }
-}
-# The estimated cell cycle position is bound between 0 and 2pi.
-tmp = unlist(mylist, recursive = FALSE)
-data1$peco = tmp
-write.csv(data1$peco, 'BT322_peco_calls_020824.csv')
-
-
-
-
-
-
-# Load in data
-seurat2 = readRDS('testData/GSC_bam/BT322/seurat_objects/BT322_normalized_ensembl.rds')
-
-# Load in cell cycle calls from each classifier
-# ccSeurat calls
-ccSeurat_calls = read.csv('BT322_ccSeurat_phase.csv', row.names = 1)
-seurat2$Phase = ccSeurat_calls$x
-# ccAFv2 calls
-ccAFv2_calls = read.csv('BT322_ccAFv2_calls_020824.csv', row.names = 1)
-seurat2$ccAFv2 = ccAFv2_calls$x
-# tricycle calls
-tricycle_calls = read.csv('BT322_tricycle_calls_020824.csv', row.names = 1)
-seurat2$tricycle = tricycle_calls$x
-# schwabe calls
-schwabe_calls = read.csv('BT322_schwabe_calls_020824.csv', row.names = 1)
-seurat2$schwabe = schwabe_calls$x
-# recat calls
-recat_calls = read.csv('BT322_recat_calls_020824.csv', row.names = 1)
-seurat2$recat = recat_calls$recat_calls
-# cyclone calls
-cyclone_calls = read.csv('BT322_cyclone_calls_020824.csv', row.names = 1)
-seurat2$cyclone = cyclone_calls$results.phases
-# peco calls
-peco_calls = read.csv('BT322_peco_calls_020824.csv', row.names = 1)
-seurat2$peco = peco_calls$x
-
-
-# Plotting order & colors
-# ccAF & ccAFv2
-ccAFv2_order = c('Neural G0', 'G1', 'Late G1', 'S', 'S/G2', 'G2/M', 'M/Early G1', 'Unknown')
-ccAFv2_colors = c("Neural G0" = "#d9a428", "G1" = "#f37f73", "Late G1" = "#1fb1a9",  "S" = "#8571b2", "S/G2" = "#db7092", "G2/M" = "#3db270" ,"M/Early G1" = "#6d90ca",  "Unknown" = "#D3D3D3")
-sub1 = ccAFv2_order %in% factor(seurat2$ccAF)
-seurat2$ccAF <- factor(seurat2$ccAF, levels = ccAFv2_order[sub1])
-sub2 = ccAFv2_order %in% factor(seurat2$ccAFv2)
-seurat2$ccAFv2 <- factor(seurat2$ccAFv2, levels = ccAFv2_order[sub2])
-# Seurat
-ccSeurat_order = c('G1', 'S', 'G2M')
-ccSeurat_colors = c("G1" = "#f37f73", "S" = "#8571b2", "G2M" = "#3db270")
-sub3 = ccSeurat_order %in% factor(seurat2$Phase)
-seurat2$Phase <- factor(seurat2$Phase, levels = ccSeurat_order[sub3])
-# Tricycle
-tricycle_order = c('G1/G0', 'S', 'G2/M', 'M')
-tricycle_colors = c("G1/G0" = "#f37f73", "S" = "#8571b2", "G2/M" = "#3db270", "M" = "#6d90ca", "Unknown" = "#D3D3D3")
-sub4 = tricycle_order %in% factor(seurat2$tricycle)
-seurat2$tricycle <- factor(seurat2$tricycle, levels = tricycle_order[sub4])
-# ccSchwabe
-ccSchwabe_order = c('G1.S', 'S', 'G2', 'G2.M', 'M.G1', 'Unknown')
-ccSchwabe_colors = c("G1.S" = "#1fb1a9", "S" = "#8571b2", "G2" = "#db7092", "G2.M" = "#3db270", "M.G1"= "#6d90ca", "Unknown" = "#D3D3D3")
-sub5 = ccSchwabe_order %in% factor(seurat2$schwabe)
-seurat2$ccSchwabe <- factor(seurat2$schwabe, levels = ccSchwabe_order[sub5])
-# reCAT
-recat_order = c('G1', 'G1S', 'S', 'G2', 'G2M', 'M')
-recat_colors = c("G1" = "#f37f73", "G1S" = "#1fb1a9", "S" = "#8571b2", "G2" = "#db7092", "G2M" = "#3db270", "M"= "#6d90ca")
-sub6 = recat_order %in% factor(seurat2$recat)
-seurat2$recat <- factor(seurat2$recat, levels = recat_order[sub6])
-# cyclone
-# same as Seurat
-sub7 = ccSeurat_order %in% factor(seurat2$cyclone)
-seurat2$cyclone <- factor(seurat2$cyclone, levels = ccSeurat_order[sub7])
-# peco
-# same as tricycle
-sub8 = tricycle_order %in% factor(seurat2$peco)
-seurat2$peco <- factor(seurat2$peco, levels = tricycle_order[sub8])
-
-# Visualize umap; adjust above parameters if need be
-d1 = DimPlot(seurat2, reduction = "umap", label=F, label.size = 6,  pt.size = 1)
-c1 = DimPlot(seurat2, reduction = "umap", label=F, label.size = 6, pt.size = 1, group.by = 'ccAF', cols = ccAFv2_colors[sub1])
-c2 = DimPlot(seurat2, reduction = "umap", label=F, label.size = 6, pt.size = 1, group.by = 'ccAFv2', cols = ccAFv2_colors[sub2])
-p1 = DimPlot(seurat2, reduction = "umap", label=F, label.size = 6, pt.size = 1, group.by = 'Phase', cols = ccSeurat_colors[sub3]) + ggtitle('ccSeurat')
-t1 = DimPlot(seurat2, reduction = "umap", label=F, label.size = 6, pt.size = 1, group.by = 'tricycle', cols = tricycle_colors[sub4])
-s1 = DimPlot(seurat2, reduction = "umap", label=F, label.size = 6, pt.size = 1, group.by = 'ccSchwabe', cols = ccSchwabe_colors[sub5])
-r1 = DimPlot(seurat2, reduction = "umap", label=F, label.size = 6, pt.size = 1, group.by = 'recat', cols = recat_colors[sub6])
-cy1 = DimPlot(seurat2, reduction = "umap", label=F, label.size = 6, pt.size = 1, group.by = 'cyclone', cols = ccSeurat_colors[sub3])
-pe1 = DimPlot(seurat2, reduction = "umap", label=F, label.size = 6, pt.size = 1, group.by = 'peco', cols = tricycle_colors[sub4])
-
-# Plot
-tag = 'BT322'
-pdf(file.path(paste0(tag, "_visualization_test_020824.pdf")), height = 12, width = 24)
-lst1 = list(c1, c2, p1, t1, r1, s1, pe1, cy1)
-grid.arrange(grobs = lst1, layout_matrix = rbind(c(1,2, 3, 4), c(5,6,7, 8)), top = "")
-dev.off()
