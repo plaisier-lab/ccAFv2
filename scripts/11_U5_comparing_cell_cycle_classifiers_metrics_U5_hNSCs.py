@@ -18,7 +18,7 @@
 ## mention who built it. Thanks. :-)                    ##
 ##########################################################
 
-# docker run -it -v '/home/soconnor/old_home/ccNN:/files' cplaisier/ccnn
+# docker run -it -v '/home/soconnor/old_home/ccNN/ccAFv2:/files' cplaisier/ccnn
 
 # Imports
 import pandas as pd
@@ -43,13 +43,10 @@ from scipy import stats
 ## Load datasets and concatenate
 data1 = 'U5'
 tags = ['ccaf', 'ccafv2', 'seurat', 'tricycle', 'recat', 'ccschwabe', 'peco', 'cyclone']
-resdir = 'cross_validation'
+resdir = 'compare_classifiers'
 datasets = {}
 for tag1 in tags:
-    if tag1 in ['ccaf', 'tricycle', 'peco']:
-        datasets[tag1] = pd.read_csv(resdir+'/'+tag1+'/CV_classification_report_020524.csv', index_col = 0)
-    else:
-        datasets[tag1] = pd.read_csv(resdir+'/'+tag1+'/CV_classification_report_010424.csv', index_col = 0)
+    datasets[tag1] = pd.read_csv(resdir+'/results/'+data1+ '/'+tag1+'_CV_classification_report_with_Cell_Labels_as_ref.csv', index_col = 0)
     datasets[tag1]['classifier'] = tag1
     datasets[tag1].rename(columns = {datasets[tag1][datasets[tag1].columns[0]].name: 'truelab'}, inplace=True)
     datasets[tag1].rename(columns = {datasets[tag1][datasets[tag1].columns[1]].name: 'predlab'}, inplace=True)
@@ -63,7 +60,7 @@ results = {}
 cells_predicted = {}
 defined_cell_states = df_all['truelab']
 compare_cell_states = df_all['predlab']
-numSamples = round(2962*0.8) # removed G1/other cells
+numSamples = round(2962*0.8)
 nfolds = 10
 for tag1 in tags:
     results[tag1] = []
@@ -106,7 +103,7 @@ for metric1 in ['adjusted_mutual_score', 'cells_predicted']:
     sns.boxplot(hue = 'classifier', y = metric1, x = "data", data = df2, ax = ax1, palette = "husl")
     ax1.set(ylabel=metric1)
     ax1.set_ylim(0,1)
-    plt.savefig(resdir+'/'+data1+'_'+metric1+'_classifier_comparison_020524.pdf')
+    plt.savefig(resdir+'/results/'+data1+'/'+data1+'_'+metric1+'_classifier_comparison_with_Cell_Labels_as_ref.pdf')
     plt.clf()
 
 median_ami = []
@@ -119,8 +116,6 @@ median_cp_perc = [i * 100 for i in median_cp]
 
 x = np.array(median_cp_perc)
 y = np.array(median_ami)
-#xerr1 = np.array([0.001, 0, 0.002, 0, 0.005, 0.003, 0])
-#yerr1 = np.array([0.005, 0.005, 0.006, 0.006, 0.004, 0.004, 0.004])
 descrip = np.array(['ccAF', 'ccAFv2', 'ccSeurat', 'tricycle', 'recat', 'ccSchwabe', 'peco', 'cyclone'])
 fig, ax = plt.subplots()
 fig, ax = plt.subplots(figsize=(25,25))
@@ -134,7 +129,7 @@ ax.set_ylim(0,1.1)
 ax.set_xlim(50,100)
 for i, txt in enumerate(descrip):
     ax.annotate(txt, (x[i], y[i]))
-plt.savefig(resdir+'/AMI_cellsPredicted_together_020524.pdf')
+plt.savefig(resdir+'/results/'+data1+'/'+data1+'_AMI_and_cells_predicted_together.pdf')
 plt.clf()
 
 
@@ -147,17 +142,17 @@ for tag1 in tags:
     compare_cell_states = df_all[df_all['classifier'] == tag1]['predlab']
     ami_scores[tag1] = adjusted_mutual_info_score(defined_cell_states[compare_cell_states.dropna().index], compare_cell_states.dropna())
 
-
+# number of states algorithm predicts
 lst = [8, 7, 3, 4, 6, 5, 4, 3]
 x = np.array(lst)
 y = np.array(list(ami_scores.values()))
 descrip = np.array(tags)
 df2 = pd.DataFrame(y, descrip)
 df2.rename(columns={0:'AMI'}, inplace=True)
-df2.to_csv(resdir+'/U5_AMI_cell_labels_reference.csv')
+df2.to_csv(resdir+'/results/'+data1+'/'+data1+'_AMI_cell_labels_reference.csv')
 
 fig, ax = plt.subplots()
-fig, ax = plt.subplots(figsize=(10,10))
+fig, ax = plt.subplots(figsize=(20,15))
 ax.errorbar(x, y,
             fmt='o', ecolor = 'black')
 ax.set_xlabel('# of classes')
@@ -166,5 +161,5 @@ ax.set_ylim(0,1.1)
 ax.set_xlim(0,10)
 for i, txt in enumerate(descrip):
     ax.annotate(txt, (x[i], y[i]))
-plt.savefig(resdir+'/U5_AMI_no_classes_together_cell_labels_ref_021324.pdf')
+plt.savefig(resdir+'/results/'+data1+'/'+data1+'_AMI_number_classes_cell_labels_ref.pdf')
 plt.clf()
