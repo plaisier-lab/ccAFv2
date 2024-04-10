@@ -61,9 +61,6 @@ library(ccAFv2)
 # Set working directory
 #setwd("files/")
 
-# Classifiers to compare
-classifiers = c('ccafv2', 'seurat', 'tricycle', 'ccschwabe', 'recat', 'cyclone', 'peco')
-
 # Load ccSeurat phase gene sets
 s.genes <- cc.genes$s.genes
 g2m.genes <- cc.genes$g2m.genes
@@ -121,6 +118,9 @@ savedir = 'compare_classifiers'
 # Set parameters for analysis
 nfolds = 10
 ncores = 10
+
+# Classifiers to compare
+classifiers = c('ccafv2', 'tricycle', 'ccschwabe', 'recat', 'cyclone', 'peco')
 
 # Create new folders for CV results
 truelab = read.csv('data/U5/U5_ccSeurat_calls.csv', row.names = 'X')
