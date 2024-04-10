@@ -61,4 +61,4 @@ for k in range(nfolds):
 
 os.makedirs(savedir+'/ccaf')
 DF = pd.DataFrame({'True Labels':flatten(truelab), 'ccAF_pred':flatten(predlab)})
-DF.to_csv(savedir+'/ccaf/CV_classification_report_with_Phase_as_ref.csv')
+DF.to_csv(savedir+'/ccaf/U5_CV_classification_report_with_Phase_as_ref.csv')
