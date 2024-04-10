@@ -18,7 +18,7 @@
 ## mention who built it. Thanks. :-)                    ##
 ##########################################################
 
-#docker run -it -v '/home/soconnor/old_home/ccNN:/files' cplaisier/ccafv2_extra
+#docker run -it -v '/home/soconnor/old_home/ccNN/ccAFv2:/files' cplaisier/ccafv2_extra
 
 #--------------------------------
 # Set up section / load packages
@@ -71,7 +71,7 @@ vec<-unlist(cc.genes)
 cc_genes_list = data.frame(vec)$vec
 
 # Cyclone functions and data necessary
-load("pairs_functions.RData")
+load("compare_classifiers/pairs_functions.RData")
 hs.pairs <- readRDS(system.file("exdata", "human_cycle_markers.rds", package="scran"))
 mouse_human_genes = read.csv("http://www.informatics.jax.org/downloads/reports/HOM_MouseHumanSequence.rpt",sep="\t")
 
@@ -96,15 +96,6 @@ convert_mouse_to_human <- function(gene_list){
 
 genes.cc_human_symbol = convert_mouse_to_human(genes.cc_symbol)
 
-# Load in Leng 2015 data (FUCCI sorted; a ground truth dataset)
-#fucci = read.csv('GSE64016_H1andFUCCI_normalized_EC.csv', row.names = 'X')
-#HumanLengESC = CreateSeuratObject(fucci)
-#table(HumanLengESC$orig.ident)
-#select fucci-expression cells
-#colnames(HumanLengESC)[HumanLengESC$orig.ident %in% c('G1', 'S', 'G2')]
-## filter them out:
-#filtered_HumanLengESC <- HumanLengESC[,colnames(HumanLengESC)[HumanLengESC$orig.ident %in% c('G1', 'S', 'G2')]]
-
 # Functions
 abs_log <- function(x){
   x[x==0] <- 1
@@ -122,9 +113,11 @@ mgenes = read.csv("model/final/ccAFv2_genes_full_dataset_102423_fc_25_v2_layers_
 
 # Directory where barcodes.tsv, features.tsv, and matrix.mtx are located
 resdirs = c('U5')
+resdir2 = 'compare_classifiers'
 data_dir <- 'outs/' # where data is located
 save_dir = 'analysis_output'
 obj1 = 'seurat_objects'
+
 
 #------------------------------------------------------
 # Cross validation
@@ -137,26 +130,26 @@ ncores = 10
 # Create new folders for CV results
 analysis1 = 'cross_validation'
 dir.create(analysis1, showWarnings = FALSE)
-truelab = read.csv('U5_ccseurat_calls_101023.csv', row.names = 'X')
+truelab = read.csv('data/U5/U5_ccSeurat_calls.csv', row.names = 'X')
 for(class1 in classifiers){
   cat('\n Classifier:', toupper(class1),'\n')
   dir.create(file.path(analysis1, class1), showWarnings = FALSE)
   cat('\n Loading data \n')
   if(class1 == 'ccafv2'){
     # CCAFV2
-    data1 = readRDS('data/normalized/final/U5_normalized_ensembl.rds')
-    write.csv(data1$ccAF, file.path('U5_cell_labels_calls_020224.csv'))
+    data1 = readRDS('data/U5/U5_normalized_ensembl.rds')
+    write.csv(data1$ccAF, file.path('data/U5/U5_cell_labels.csv'))
     data1 = SCTransform(data1, return.only.var.genes=FALSE, verbose=FALSE)
     tmp = data1[rownames(data1) %in% mgenes,]
-    write.csv(tmp@assays$SCT@data, file.path('U5_SCT_data_expression_861_genes.csv'))
-    write.csv(tmp@assays$SCT@scale.data, file.path('U5_SCT_expression_861_genes.csv'))
+    #write.csv(tmp@assays$SCT@data, file.path('data/U5/U5_SCT_data_expression_861_genes.csv'))
+    #write.csv(tmp@assays$SCT@scale.data, file.path('data/U5/U5_SCT_expression_861_genes.csv'))
     data1$Phase = truelab$x
     #data1@assays$SCT@var.features=mgenes
     #cat(' Subset to', length(data1@assays$SCT@var.features), 'highly variable genes \n')
   } else if(class1 %in% c('tricycle', 'ccschwabe')){
     # TRICYCLE OR SCHWABE
     # tricycle requires gene symbols and data to be log normalized
-    data1 = readRDS('data/filtered/final/U5_filtered_gene_symbols.rds')
+    data1 = readRDS('data/U5/U5_filtered_gene_symbols.rds')
     data1$Phase = truelab$x
     data1 = NormalizeData(data1)
     data1 = as.SingleCellExperiment(data1)
@@ -164,7 +157,7 @@ for(class1 in classifiers){
     # PECO
     # peco requires ensembl IDs and data to be quantile normalized
     # doesn't have cell cycle phase; just psuedotime - not super useful
-    data1 = readRDS('data/filtered/final/U5_filtered_ensembl.rds')
+    data1 = readRDS('data/U5/U5_filtered_ensembl.rds')
     data1$Phase = truelab$x
     # subset to 101 significant cyclic genes
     cat(' Subset to', dim(data1)[1], 'genes \n')
@@ -173,15 +166,15 @@ for(class1 in classifiers){
     data1 = data_transform_quantile(data1)
   } else if(class1 == 'recat'){
     # RECAT
-    data1 = readRDS('data/normalized/final/U5_normalized_gene_symbols.rds')
+    data1 = readRDS('data/U5/U5_normalized_gene_symbols.rds')
     data1$Phase = truelab$x
     ccAF_calls = data.frame(data1$Phase)
     data1 = GetAssayData(object = data1, slot = "counts")
     # Normalize by log2(TPM+1)
     data1 = abs_log(NormalizeTPM(data1))
     # load R scripts
-    load('ola_mES_2i.RData')
-    setwd('reCAT-master/R/')
+    load('compare_classifiers/ola_mES_2i.RData')
+    setwd('compare_classifiers/reCAT-master/R/')
     source('get_test_exp.R')
     recat_mouse_gene_symbols = mapIds(org.Mm.eg.db, keys = colnames(test_exp), keytype = "ENSEMBL", column="SYMBOL", multiVals='first')
     recat_human_gene_symbols = convert_mouse_to_human(recat_mouse_gene_symbols)
@@ -193,7 +186,7 @@ for(class1 in classifiers){
     setwd("../../")
   } else if(class1 == 'cyclone'){
     # CYCLONE
-    data1 = readRDS('data/filtered/final/U5_filtered_ensembl.rds')
+    data1 = readRDS('data/U5/U5_filtered_ensembl.rds')
     data1$Phase = truelab$x
     data1 = NormalizeData(data1)
     indata <- which(rownames(data1) %in% unlist(hs.pairs))
@@ -293,5 +286,5 @@ for(class1 in classifiers){
     }
   }
   cat('\n Saving out results \n')
-  write.csv(results, file.path(analysis1, class1, 'CV_classification_report_020824_with_Phase_as_ref.csv'))
+  write.csv(results, file.path(resdir2,'/', class1, 'CV_classification_report_with_Phase_as_ref.csv'))
 }
