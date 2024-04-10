@@ -60,9 +60,6 @@ library(ccAFv2)
 # Set working directory
 #setwd("files/")
 
-# Classifiers to compare
-classifiers = c('ccafv2', 'seurat', 'tricycle', 'ccschwabe', 'recat', 'cyclone', 'peco')
-
 # Load ccSeurat phase gene sets
 s.genes <- cc.genes$s.genes
 g2m.genes <- cc.genes$g2m.genes
@@ -110,8 +107,8 @@ mgenes = read.csv(system.file("extdata", "ccAFv2_genes.csv", package = "ccAFv2")
 #---------------------------------------------------
 
 # Directories
-resdirs = c('U5')
-resdir2 = 'compare_classifiers'
+tag = 'U5'
+savedir = 'compare_classifiers'
 
 #------------------------------------------------------
 # Cross validation
@@ -121,10 +118,13 @@ resdir2 = 'compare_classifiers'
 nfolds = 10
 ncores = 10
 
+# Classifiers to compare
+classifiers = c('ccafv2', 'seurat', 'tricycle', 'ccschwabe', 'recat', 'cyclone', 'peco')
+
 # Create new folders for CV results
 for(class1 in classifiers){
   cat('\n Classifier:', toupper(class1),'\n')
-  dir.create(file.path(analysis1, class1), showWarnings = FALSE)
+  dir.create(file.path(savedir, class1), showWarnings = FALSE)
   cat('\n Loading data \n')
   if(class1 == 'ccafv2'){
     # CCAFV2
@@ -273,87 +273,5 @@ for(class1 in classifiers){
     }
   }
   cat('\n Saving out results \n')
-  write.csv(results, file.path(resdir2, class1, 'CV_classification_report_with_Cell_Labels_as_ref.csv'))
+  write.csv(results, file.path(savedir, class1, 'U5_CV_classification_report_with_Cell_Labels_as_ref.csv'))
 }
-
-
-
-"""
-#------------------------------------------------------------
-# Apply to full dataset for plotting (load up specific data1)
-#------------------------------------------------------------
-# ccAFv2
-data1 = PredictCellCycle(data1, do_sctransform=FALSE)
-write.csv(data1$ccAFv2, file.path(resdir2, 'ccafv2/U5_ccAFv2_calls.csv'))
-
-# seurat
-# Apply to full dataset
-data1 = CellCycleScoring(data1, s.genes, g2m.genes)
-write.csv(data1$Phase, file.path(resdir2, 'seurat/U5_ccseurat_calls.csv'))
-
-# tricycle
-# Apply to full dataset
-data1 = project_cycle_space(data1, gname.type='SYMBOL', species='human')
-data1 = estimate_cycle_position(data1)
-data1 <- as.Seurat(data1)
-# Translate tricycle
-mylist <- list()
-for(val1 in array(data1$tricyclePosition)){
-  if((val1 >= 0.5*pi) & (val1 < pi)){
-    mylist <- append(mylist,'S')
-  } else if((val1 >= pi) & (val1 < 1.5*pi)){
-    mylist <- append(mylist,'G2/M')
-  } else if((val1 >= 1.5*pi) & (val1 < 1.75*pi)){
-    mylist <- append(mylist,'M')
-  } else if((val1 >= 1.75*pi) | (val1 < 2*pi)){
-    mylist <- append(mylist,'G1/G0')
-  }
-}
-tmp = unlist(mylist, recursive = FALSE)
-data1$tricycle = tmp
-write.csv(data1$tricycle, file.path(resdir2, 'tricycle/U5_tricycle_calls.csv'))
-
-# schwabe
-# Apply to full dataset
-data1 = project_cycle_space(data1, gname.type='SYMBOL', species='human')
-data1 = estimate_Schwabe_stage(data1, gname.type='SYMBOL', species='human')
-data1 <- as.Seurat(data1)
-# Rename NA as unknown
-levels(data1$CCStage)<-c(levels(data1$CCStage),"Unknown")
-data1$CCStage[is.na(data1$CCStage)] <- "Unknown"
-write.csv(data1$CCStage, file.path(resdir2, 'ccschwabe/U5_schwabe_calls.csv'))
-
-# recat
-score_result <- get_score(data1)
-recat_calls = gsub('Score', '', colnames(score_result$mean_score)[apply(score_result$mean_score, 1, which.max)])
-df = data.frame(recat_calls)
-rownames(df) = colnames(data1)
-write.csv(df, file.path(resdir2, 'recat/U5_recat_calls.csv'))
-
-# cyclone
-results = cyclone(assays(as.SingleCellExperiment(data1))$logcounts, pairs = hs.pairs)
-tmp = data.frame(results$phases)
-rownames(tmp) = colnames(data1)
-write.csv(tmp, file.path(resdir2, 'cyclone/U5_cyclone_calls.csv'))
-
-# peco
-pred <- cycle_npreg_outsample(Y_test = data1, sigma_est = training_human$sigma[rownames(data1),], funs_est = training_human$cellcycle_function[rownames(data1)], method.trend = "trendfilter",get_trend_estimates = FALSE, ncores = 10)
-head(colData(pred$Y)$cellcycle_peco)
-mylist <- list()
-for(val1 in array(colData(pred$Y)$cellcycle_peco)){
-  if((val1 >= 0.5*pi) & (val1 < pi)){
-    mylist <- append(mylist,'S')
-  } else if((val1 >= pi) & (val1 < 1.5*pi)){
-    mylist <- append(mylist,'G2/M')
-  } else if((val1 >= 1.5*pi) & (val1 < 1.75*pi)){
-    mylist <- append(mylist,'M')
-  } else if((val1 >= 1.75*pi) | (val1 < 2*pi)){
-    mylist <- append(mylist,'G1/G0')
-  }
-}
-# The estimated cell cycle position is bound between 0 and 2pi.
-tmp = unlist(mylist, recursive = FALSE)
-data1$peco = tmp
-write.csv(data1$peco, file.path(resdir2, 'peco/U5_peco_calls.csv'))
-
-"""
