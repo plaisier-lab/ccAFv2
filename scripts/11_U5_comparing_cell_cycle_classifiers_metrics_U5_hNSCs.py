@@ -55,7 +55,6 @@ df_all = pd.concat([datasets[tags[0]], datasets[tags[1]], datasets[tags[2]], dat
 # change Unknown to NaN
 df_all['predlab'].replace({'Unknown': np.nan, 'G2M': 'G2/M','G2.M':'G2/M', 'M.G1': 'M/Early G1'}, inplace=True)
 
-
 # Compare adjusted mutual information score for each classifier
 ami_scores = {}
 for tag1 in tags:
