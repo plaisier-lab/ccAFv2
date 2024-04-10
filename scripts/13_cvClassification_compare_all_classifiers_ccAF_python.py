@@ -18,7 +18,7 @@
 ## mention who built it. Thanks. :-)                    ##
 ##########################################################
 
-#docker run -it -v '/home/soconnor/old_home/ccNN/:/files' cplaisier/scrna_seq_velocity
+#docker run -it -v '/home/soconnor/old_home/ccNN/ccAFv2/:/files' cplaisier/scrna_seq_velocity
 
 import numpy as np
 import pandas as pd
@@ -33,11 +33,15 @@ def flatten(xss):
 # Set parameters for analysis
 nfolds = 10
 ncores = 10
+resdir = 'data'
+set1 = 'U5'
+resdir2 = resdir+'/'+set1
+savedir = 'compare_classifiers'
 
 # Load data
-data1 = sc.read_loom('data/filtered/final/U5_filtered_ensembl.loom')
+data1 = sc.read_loom(resdir2+'/'+set1+'_filtered_ensembl.loom')
 data1.obs['Cell Labels'] = data1.obs['ccAF']
-seurat_calls = pd.read_csv('U5_ccseurat_calls_101023.csv', index_col = 0)
+seurat_calls = pd.read_csv(resdir2+'/'+set1+'_ccSeurat_calls.csv', index_col = 0)
 data1.obs['Phase'] = seurat_calls['x']
 
 # Initialize helper vars/indices for subsetting data (test)
@@ -55,12 +59,6 @@ for k in range(nfolds):
     predlab.append(list(data_sub.obs['ccAF']))
 
 
-os.makedirs('cross_validation/ccaf')
+os.makedirs(savedir+'/ccaf')
 DF = pd.DataFrame({'True Labels':flatten(truelab), 'ccAF_pred':flatten(predlab)})
-DF.to_csv('cross_validation/ccaf/CV_classification_report_020824_with_Phase_as_ref.csv')
-
-# Just reclassify with all cells
-data1 = sc.read_loom('data/filtered/final/U5_filtered_ensembl.loom')
-data1.obs['Cell Labels'] = data1.obs['ccAF']
-data1.obs['ccAF_pred'] = ccAF.ccAF.predict_labels(data1)
-data1.obs['ccAF_pred'].to_csv('U5_ccAF_calls_020224.csv')
+DF.to_csv(savedir+'/ccaf/CV_classification_report_with_Phase_as_ref.csv')
