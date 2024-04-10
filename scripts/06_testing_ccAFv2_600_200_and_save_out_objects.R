@@ -17,7 +17,7 @@
 ## mention who built it. Thanks. :-)                    ##
 ##########################################################
 
-#docker run -it -v '/home/soconnor/old_home/ccNN:/files' cplaisier/ccafv2_extra
+#docker run -it -v '/home/soconnor/old_home/ccNN/ccAFv2:/files' cplaisier/ccafv2_extra
 
 #------------------------
 # Set up / imports
@@ -39,9 +39,10 @@ library(ccAFv2)
 
 # Set working directory
 setwd("files/")
+resdir = 'data'
 
 # Set output directory
-save_dir = 'testData/all_test_data_objects'
+save_dir = 'results/ccAFv2'
 
 # Cell cycle state order and colors for plotting
 ccSeurat_order = c('G1', 'S', 'G2M')
@@ -63,46 +64,36 @@ for(datas1 in datas){
   # Load in data
   cat('\n', datas1,'\n')
   if(datas1 == 'U5'){
-    resdir = file.path('data/normalized/final')
-    resdir2 = file.path('testData/U5')
-    seurat2 = readRDS(file.path(resdir, paste0(datas1, '_normalized_ensembl.rds')))
-    phase_calls = read.csv(file.path(resdir2, paste0(datas1, '_ccseurat_calls_101023.csv')), row.names = 'X')
-    seurat2 = AddMetaData(seurat2, metadata = phase_calls$x, col.name = 'Phase')
-  }else if (datas1 == 'LGG275_GF'){
-    resdir = file.path(paste0('testData/SCDataHugnotIGF/', strsplit(datas1, split = "_")[[1]][1], '/', datas1, '/seurat_objects'))
-    resdir2 = file.path(paste0('testData/SCDataHugnotIGF/', strsplit(datas1, split = "_")[[1]][1], '/', datas1, '/analysis_output'))
-    seurat2 = readRDS(file.path(resdir, paste0(datas1, '_normalized_ensembl.rds')))
+    resdir2 = file.path(resdir, 'U5')
+    seurat2 = readRDS(file.path(resdir2, paste0(datas1, '_normalized_ensembl.rds')))
     phase_calls = read.csv(file.path(resdir2, paste0(datas1, '_ccSeurat_calls.csv')), row.names = 'X')
     seurat2 = AddMetaData(seurat2, metadata = phase_calls$x, col.name = 'Phase')
-  }else if(datas1 %in% c('BT324', 'BT326', 'BT363', 'BT368')){
-    resdir = file.path(paste0('testData/GSC_bam/',datas1, '/seurat_objects'))
-    resdir2 = file.path(paste0('testData/GSC_bam/',datas1))
-    seurat2 = readRDS(file.path(resdir, paste0(datas1, '_normalized_ensembl.rds')))
-    phase_calls = read.csv(file.path(resdir2, paste0(datas1, '_ccSeurat_phase.csv')), row.names = 1)
-    seurat2 = AddMetaData(seurat2, metadata = phase_calls$seurat2.Phase, col.name = 'Phase')
-  }else if(datas1 %in% c('BT322','BT333')){
-    resdir = file.path(paste0('testData/GSC_bam/',datas1, '/seurat_objects'))
-    resdir2 = file.path(paste0('testData/GSC_bam/',datas1))
-    seurat2 = readRDS(file.path(resdir, paste0(datas1, '_normalized_ensembl.rds')))
-    phase_calls = read.csv(file.path(resdir2, paste0(datas1, '_ccSeurat_phase.csv')), row.names = 1)
+  }else if (datas1 == 'LGG275_GF'){
+    resdir2 = file.path(resdir, 'LGG', 'LGG275', datas1)
+    seurat2 = readRDS(file.path(resdir2, paste0(datas1, '_normalized_ensembl.rds')))
+    phase_calls = read.csv(file.path(resdir2, paste0(datas1, '_ccSeurat_calls.csv')), row.names = 'X')
+    seurat2 = AddMetaData(seurat2, metadata = phase_calls$x, col.name = 'Phase')
+  }else if(datas1 %in% c('BT322', 'BT324', 'BT326', 'BT333', 'BT363', 'BT368')){
+    resdir2 = file.path(resdir, 'GSC', datas1)
+    seurat2 = readRDS(file.path(resdir2, paste0(datas1, '_normalized_ensembl.rds')))
+    phase_calls = read.csv(file.path(resdir2, paste0(datas1, '_ccSeurat_calls.csv')), row.names = 1)
+    colnames(phase_calls) = c('x')
     seurat2 = AddMetaData(seurat2, metadata = phase_calls$x, col.name = 'Phase')
   }else if(datas1 %in% c('BT363_tumor', 'BT368_tumor')){
-    resdir = file.path(paste0('testData/GBM_tumors/',datas1, '/seurat_objects'))
-    resdir2 = file.path(paste0('testData/GBM_tumors/',datas1, '/analysis_output'))
-    seurat2 = readRDS(file.path(resdir, paste0(datas1, '_normalized_ensembl.rds')))
+    resdir2 = file.path(resdir, 'GBM', datas1)
+    seurat2 = readRDS(file.path(resdir2, paste0(datas1, '_normalized_ensembl.rds')))
     phase_calls = read.csv(file.path(resdir2, paste0(datas1, '_ccSeurat_calls.csv')), row.names = 1)
     seurat2 = AddMetaData(seurat2, metadata = phase_calls$x, col.name = 'Phase')
   }else if(datas1 == 'W8-1'){
-    resdir = file.path(paste0('testData/GSE155121/NSC/FINAL/',datas1))
-    resdir2 = resdir
-    seurat2 = readRDS(file.path(resdir, paste0(datas1, '_processed_010524.rds')))
+    resdir2 = file.path(resdir, 'GSE155121/NSC', datas1)
+    seurat2 = readRDS(file.path(resdir2, paste0(datas1, '_processed_010524.rds')))
   }
   # Classify with ccAFv2
   seurat2 = PredictCellCycle(seurat2)
   # Save out ccAFv2 calls
-  write.csv(seurat2$ccAFv2, file.path(resdir2, paste0(datas1, '_ccAFv2_calls_R_test.csv')))
+  write.csv(seurat2$ccAFv2, file.path(save_dir, paste0(datas1, '_ccAFv2_calls.csv')))
   # Save out data as RDS object
-  saveRDS(seurat2, file.path(save_dir, paste0(datas1, '_normalized_with_ccAFv2_R_calls.rds')))
+  saveRDS(seurat2, file.path(save_dir, paste0(datas1, '_normalized_with_ccAFv2.rds')))
   # Calculate AMI
   subset1 = seurat2[,seurat2$ccAFv2 != 'Unknown']
   predlab = subset1$ccAFv2
@@ -120,12 +111,12 @@ for(datas1 in datas){
   p1 = DimPlot(seurat2, reduction = "umap", label=F, pt.size = 1, group.by = 'Phase', cols = ccSeurat_colors[sub1])
   c2 = DimPlot(seurat2, reduction = "umap", label=F, pt.size = 1, group.by = 'ccAFv2', cols = ccAFv2_colors[sub2])
   # Save as pdf
-  pdf(file.path(resdir2, paste0(datas1, '_umap_ccAFv2_phase.pdf')), width = 8, height = 10)
+  pdf(file.path(savedir, paste0(datas1, '_umap_ccAFv2_and_phase.pdf')), width = 8, height = 10)
   lst = list(p1, c2)
   grid.arrange(grobs = lst, layout_matrix = rbind(c(1,NA),c(2,NA)), top = "")
   dev.off()
 }
 
 # Save out AMI and Cells Predicted values for all test datasets
-write.csv(data.frame(AMI1), file.path('testData/all_test_data_AMI_ccseurat_as_ref.csv'))
-write.csv(data.frame(CellsPredict), file.path('testData/all_test_data_cells_predict.csv'))
+write.csv(data.frame(AMI1), file.path(savedir, 'all_test_data_AMI_ccseurat_as_ref.csv'))
+write.csv(data.frame(CellsPredict), file.path(savedir, 'all_test_data_cells_predict.csv'))
