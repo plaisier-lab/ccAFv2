@@ -17,7 +17,7 @@
 ## mention who built it. Thanks. :-)                    ##
 ##########################################################
 
-#docker run -it -v '/home/soconnor/old_home/ccNN:/files' cplaisier/ccnn
+#docker run -it -v '/home/soconnor/old_home/ccNN/ccAFv2:/files' cplaisier/ccnn
 
 ###############
 ## Imports   ##
@@ -199,9 +199,9 @@ class Classifier_ccAFv2:
 ##########################################
 # Set up
 sets = ['U5']
+resdir = 'data/'+sets[0]
+resdir2 = 'results'
 p_cutoffs = {'U5':0.05}
-resdir = 'data/normalized/final'
-savedir = 'results'
 
 # Load up conversion file
 symEnsmbl = pd.read_csv('geneConversion/U5/filtered_feature_bc_matrix/features.tsv.gz', header = None, index_col=1, sep='\t')
@@ -247,13 +247,13 @@ for set1 in sets:
     datasets[set1].var_names = pd.Index(symEnsmbl.loc[datasets[set1].var_names,0], name='Ensembl')
     # Subset marker genes
     print('\nSubsetting data genes to marker genes...')
-    mgenes = pd.read_csv('markerGenes/U5_scTransform_Markers_together_030423.csv', header = 0, index_col = 0)
+    mgenes = pd.read_csv('markerGenes/U5_scTransform_Markers_together.csv', header = 0, index_col = 0)
     # Filter marker genes by avg_log2FC
     mgenes = mgenes.loc[mgenes['avg_log2FC'].ge(0.25),:]
     # Remove G1/other cells for ccAFv2 training
     mgenes = mgenes[mgenes['cluster'] != 'G1/other']
     # Filter marker genes by p_val_adj
-    mgenes = mgenes.loc[mgenes['p_val_adj'].le(0.05),:]
+    mgenes = mgenes.loc[mgenes['p_val_adj'].le(p_cutoffs[set1]),:]
     mgenes = list(mgenes['gene'])
     mgenes = list(set(mgenes))
     tmp1 = []
@@ -273,7 +273,6 @@ for set1 in sets:
     # Subset data to marker genes
     datasets[set1] = datasets[set1][:,mg1]
 
-
 # Parameters
 numSamples = 300
 nfolds = 10
@@ -282,7 +281,7 @@ layers = ['600_200']
 if layers:
     for lay1 in layers:
         print(lay1)
-        model_name = 'final_layers_'+lay1
+        model_name = 'layers_'+lay1
         model_specs1 = [eval(i) for i in model_name.split('layers_')[1].split('_')]
         print('\nBuilding ccAFv2...')
         ccAFv2 = Classifier_ccAFv2(training_sets = {set1:datasets[set1]}, label_sets = {set1:datasets[set1].obs['new_clusters']}, dropout_rate=0.5, model_specs = model_specs1)
@@ -318,14 +317,16 @@ if layers:
         ### ccAFv2 CV ###
         #################
         ## Load up data
+        if not os.path.exists(resdir2+'/ccAFv2'):
+            os.makedirs(resdir2+'/ccAFv2')
+        savedir = resdir2+'/ccAFv2'
         if not exists(savedir+'/CV_classification_report.csv'):
             print('\nccAFv2 cross-validation...')
             for k in range(nfolds):
                 print('ccAFv2 round '+str(k)+'...')
                 for set1 in sets:
-                    ccNN = ccAFv2
-                    testPredLbls = ccNN.predict_labels(datasets[set1][testInds[set1][k],:])
-                    d1 = ccNN.predict_labels(datasets[set1])
+                    testPredLbls = ccAFv2.predict_labels(datasets[set1][testInds[set1][k],:])
+                    d1 = ccAFv2.predict_labels(datasets[set1])
                     df1 = pd.concat([pd.Series(d1[0]),pd.DataFrame(d1[1])],axis=1)
                     df1.index = datasets[set1].obs_names
                     df1.columns = ['Prediction']+list(ccNN.label_encoder.classes_)
@@ -335,7 +336,7 @@ if layers:
             for set1 in sets:
                 DF = pd.DataFrame({'True Labels':truelab[set1], 'Predictions':pred[set1]})
                 DF = DF[DF['Predictions'] != 'nan']
-                DF.to_csv(resdir7+'/ccAFv2_CV_results_'+str(datasets[set1]._n_vars)+'_'+set1+'_'+model_name+'.csv')
+                DF.to_csv(savedir+'/ccAFv2_CV_results_'+str(datasets[set1]._n_vars)+'_'+set1+'_'+model_name+'_10_perc_holdout.csv')
                 # Get classification report for each iteration
                 performanceResults = []
                 for k in range(nfolds):
@@ -351,8 +352,8 @@ if layers:
                 states1 = list(pd.DataFrame(datasets[set1].obs['new_clusters'].value_counts()).index)
                 performDF = performDF.loc[[True if i in states1 else False for i in list(performDF.index)]]
                 performDF['Classifier'] = 'ccAFv2'
-                performDF.to_csv(resdir7+'/ccAFv2_CV_classification_report_'+str(datasets[set1]._n_vars)+'_'+set1+'_'+model_name+'.csv')
+                performDF.to_csv(savedir+'/ccAFv2_CV_classification_report_'+str(datasets[set1]._n_vars)+'_'+set1+'_'+model_name+'_10_perc_holdout.csv')
                 comparison_column = np.where(DF['True Labels'] == DF['Predictions'], True, False)
                 DF["Equal"] = comparison_column
                 performDF.index.name = 'index1'
-                performDF.groupby(by='index1').mean().to_csv(resdir7+'/ccAFv2_CV_classification_report_mean_'+str(datasets[set1]._n_vars)+'_'+set1+'_'+model_name+'.csv')
+                performDF.groupby(by='index1').mean().to_csv(savedir+'/ccAFv2_CV_classification_report_mean_'+str(datasets[set1]._n_vars)+'_'+set1+'_'+model_name+'_10_perc_holdout.csv')
