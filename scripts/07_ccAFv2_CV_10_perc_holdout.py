@@ -329,7 +329,7 @@ if layers:
                     d1 = ccAFv2.predict_labels(datasets[set1])
                     df1 = pd.concat([pd.Series(d1[0]),pd.DataFrame(d1[1])],axis=1)
                     df1.index = datasets[set1].obs_names
-                    df1.columns = ['Prediction']+list(ccNN.label_encoder.classes_)
+                    df1.columns = ['Prediction']+list(ccAFv2.label_encoder.classes_)
                     pred[set1].extend(testPredLbls[0])
                     likelihoods[set1].extend(testPredLbls[1])
             # Dataframe of true labels, predictions, probabilities for all iterations
