@@ -17,7 +17,7 @@
 ## mention who built it. Thanks. :-)                    ##
 ##########################################################
 
-#docker run -it -v '/home/soconnor/old_home/ccNN:/files' cplaisier/ccafv2_extra
+#docker run -it -v '/home/soconnor/old_home/ccNN/ccAFv2:/files' cplaisier/ccafv2_extra
 
 #------------------------
 # Set up / imports
@@ -39,11 +39,19 @@ library(aricode)
 use_python('/usr/bin/python3')
 
 # Set working directory
-setwd("files/")
+#setwd("files/")
+resdir = 'data'
+savedir = 'results/ccAFv2'
+dir.create(file.path(savedir, 'figures'), showWarnings = FALSE)
+dir.create(file.path(savedir, 'metrics'), showWarnings = FALSE)
+figdir = file.path(savedir, 'figures')
+datadir = file.path(savedir, 'metrics')
 
 # colors and order for plotting
 ccSeurat_order = c('G1', 'S', 'G2M')
 ccSeurat_colors = c("G1" = "#f37f73", "S" = "#8571b2", "G2M" = "#3db270")
+ccAF_colors = c("G1/other" = "#9aca3c", "Neural G0" = "#d9a428", "G1" = "#f37f73", "Late G1" = "#1fb1a9",  "S" = "#8571b2", "S/G2" = "#db7092", "G2/M" = "#3db270" ,"M/Early G1" = "#6d90ca")
+ccAF_order = c("G1/other", 'Neural G0', 'G1', 'Late G1', 'S', 'S/G2', 'G2/M', 'M/Early G1')
 ccAFv2_order = c('G1/other','Neural G0', 'G1', 'Late G1', 'S', 'S/G2', 'G2/M', 'M/Early G1', 'Unknown')
 ccAFv2_colors = c("G1/other"= "#9aca3c","Neural G0" = "#d9a428", "G1" = "#f37f73", "Late G1" = "#1fb1a9",  "S" = "#8571b2", "S/G2" = "#db7092", "G2/M" = "#3db270" ,"M/Early G1" = "#6d90ca",  "Unknown" = "#D3D3D3")
 
@@ -52,10 +60,6 @@ classifyCellCycle = function(seurat0, cutoff=0.5, assay='SCT', species='human', 
     cat('Running ccAFv2:\n')
     # Make a copy of object
     seurat1 = seurat0
-    # Load model and marker genes
-    #ccAFv2 = keras::load_model_hdf5(system.file('extdata', 'ccAFv2_model.h5', package='ccAFv2'))
-    #classes = read.csv(system.file('extdata', 'ccAFv2_classes.txt', package='ccAFv2'), header=FALSE)$V1
-    #mgenes = read.csv(system.file('extdata', 'ccAFv2_genes.csv', package='ccAFv2'), header=TRUE, row.names=1)[,paste0(species,'_',gene_id)]
     # Run SCTransform on data being sure to include the mgenes
     if(assay=='SCT') {
         seurat1 = SCTransform(seurat1, return.only.var.genes=FALSE, verbose=FALSE)
@@ -103,29 +107,30 @@ classifyCellCycle = function(seurat0, cutoff=0.5, assay='SCT', species='human', 
 
 # Load ccAFv2 models and marker genes
 # layers
-tags = c('700_400', '700_300', '700_200', '700_100', '600_400', '600_300', '600_200', '600_100', '500_400', '500_300', '500_200', '500_100', '400_300', '400_200', '400_100', '300_200', '300_100', '200_100')
+#tags = c('700_400', '700_300', '700_200', '700_100', '600_400', '600_300', '600_200', '600_100', '500_400', '500_300', '500_200', '500_100', '400_300', '400_200', '400_100', '300_200', '300_100', '200_100')
+tags = c('600_200')
 
 # Load in data
 AMI1 = list()
 CellsPredict = list()
-datas = c('U5', 'LGG275_GF', 'BT322', 'BT324', 'BT326', 'BT333', 'BT363', 'BT368', 'BT363_tumor', 'BT368_tumor')
+#datas = c('U5', 'LGG275_GF', 'BT322', 'BT324', 'BT326', 'BT333', 'BT363', 'BT368', 'BT363_tumor', 'BT368_tumor')
+datas = c('U5', 'LGG275_GF', 'BT322', 'BT324', 'BT326', 'BT333', 'BT363', 'BT368')
 for(datas1 in datas){
   cat('\n', datas1,'\n')
   AMI1[[datas1]] = list()
   CellsPredict[[datas1]] = list()
   if(datas1 == 'U5'){
-    resdir = file.path('data/normalized/final')
-    resdir2 = file.path('testData/U5')
-    seurat2 = readRDS(file.path(resdir, paste0(datas1, '_normalized_ensembl.rds')))
-    phase_calls = read.csv(file.path(resdir2, paste0(datas1, '_ccseurat_calls_101023.csv')), row.names = 'X')
+    #resdir2 = file.path(resdir, datas1, 'analysis_output')
+    resdir2 = file.path(resdir, datas1)
+    resdir3 = file.path(resdir, datas1, 'seurat_objects')
+    seurat2 = readRDS(file.path(paste0(resdir,'/', datas1,'/', datas1, '_normalized_ensembl.rds')))
+    phase_calls = read.csv(file.path(resdir2, paste0(datas1, '_ccSeurat_calls.csv')), row.names = 'X')
     seurat2 = AddMetaData(seurat2, metadata = phase_calls$x, col.name = 'Phase')
-  }else if (datas1 == 'GSE155121'){
-    resdir = file.path('testData/GSE155121/NSC/seurat_objects/final')
-    seurat2 = readRDS(file.path(resdir, 'NSC_normalized_ensembl_with_phase_and_ccafv2.rds'))
   }else if (datas1 == 'LGG275_GF'){
-    resdir = file.path(paste0('testData/SCDataHugnotIGF/', strsplit(datas1, split = "_")[[1]][1], '/', datas1, '/seurat_objects'))
-    resdir2 = file.path(paste0('testData/SCDataHugnotIGF/', strsplit(datas1, split = "_")[[1]][1], '/', datas1, '/analysis_output'))
-    seurat2 = readRDS(file.path(resdir, paste0(datas1, '_normalized_ensembl.rds')))
+    #resdir2 = file.path(paste0(resdir,'/LGG/', strsplit(datas1, split = "_")[[1]][1], '/', datas1, '/analysis_output'))
+    resdir2 = file.path(paste0(resdir,'/LGG/', strsplit(datas1, split = "_")[[1]][1], '/', datas1))
+    resdir3 = file.path(paste0(resdir,'/LGG/', strsplit(datas1, split = "_")[[1]][1], '/', datas1, '/seurat_objects'))
+    seurat2 = readRDS(file.path(resdir2, paste0(datas1, '_normalized_ensembl.rds')))
     phase_calls = read.csv(file.path(resdir2, paste0(datas1, '_ccSeurat_calls.csv')), row.names = 'X')
     seurat2 = AddMetaData(seurat2, metadata = phase_calls$x, col.name = 'Phase')
     ccAF_calls = read.csv(file.path(resdir2, paste0(datas1, '_ccAF_calls.csv')), row.names = 'X')
@@ -135,17 +140,11 @@ for(datas1 in datas){
     seurat2 <- FindNeighbors(seurat2, dims = 1:30, verbose=FALSE)
     seurat2 <- FindClusters(seurat2, verbose=FALSE, resolution = 0.61)
     seurat2 <- RunUMAP(seurat2, dims=1:30, verbose=FALSE)
-  }else if(datas1 %in% c('BT324', 'BT326', 'BT363', 'BT368')){
-    resdir = file.path(paste0('testData/GSC_bam/',datas1, '/seurat_objects'))
-    resdir2 = file.path(paste0('testData/GSC_bam/',datas1))
-    seurat2 = readRDS(file.path(resdir, paste0(datas1, '_normalized_ensembl.rds')))
-    phase_calls = read.csv(file.path(resdir2, paste0(datas1, '_ccSeurat_phase.csv')), row.names = 1)
-    seurat2 = AddMetaData(seurat2, metadata = phase_calls$seurat2.Phase, col.name = 'Phase')
-  }else if(datas1 %in% c('BT322','BT333')){
-    resdir = file.path(paste0('testData/GSC_bam/',datas1, '/seurat_objects'))
-    resdir2 = file.path(paste0('testData/GSC_bam/',datas1))
-    seurat2 = readRDS(file.path(resdir, paste0(datas1, '_normalized_ensembl.rds')))
-    phase_calls = read.csv(file.path(resdir2, paste0(datas1, '_ccSeurat_phase.csv')), row.names = 1)
+  }else if(datas1 %in% c('BT322', 'BT324', 'BT326', 'BT333', 'BT363', 'BT368')){
+    resdir2 = file.path(resdir,'GSC', datas1)
+    seurat2 = readRDS(file.path(resdir2, paste0(datas1, '_normalized_ensembl.rds')))
+    phase_calls = read.csv(file.path(resdir2, paste0(datas1, '_ccSeurat_calls.csv')), row.names = 1)
+    colnames(phase_calls) = c('x')
     seurat2 = AddMetaData(seurat2, metadata = phase_calls$x, col.name = 'Phase')
   }else if(datas1 %in% c('BT363_tumor', 'BT368_tumor')){
     resdir = file.path(paste0('testData/GBM_tumors/',datas1, '/seurat_objects'))
@@ -159,10 +158,9 @@ for(datas1 in datas){
   }
   for(tag1 in tags){
     cat('\n',tag1,'ccAFv2 model\n')
-    # Model
-    ccAFv2 = load_model_hdf5(file.path(paste0('model/final/ccAFv2_full_dataset_102423_fc_25_v2_layers_', tag1,'.h5')))
-    # Marker genes
-    mgenes = read.csv(file.path(paste0('model/final/ccAFv2_genes_full_dataset_102423_fc_25_v2_layers_', tag1, '.csv')))[,2]
+    # Load model and marker genes
+    ccAFv2 = load_model_hdf5(file.path(paste0('model/ccAFv2_layers_', tag1,'.h5')))
+    mgenes = read.csv(file.path(paste0('model/ccAFv2_genes_layers_', tag1, '.csv')))[,2]
     # Classify with ccAFv2
     seurat2 = classifyCellCycle(seurat2)
     # Calculate AMI
@@ -175,17 +173,16 @@ for(datas1 in datas){
     CellsPredict[[datas1]][[tag1]] = round((dim(subset1)[2]/dim(seurat2)[2])*100, 2)
     # Plotting order & colors
     # ccAF & ccAFv2
-    sub3 = ccSeurat_order %in% factor(seurat2$Phase)
-    seurat2$Phase <- factor(seurat2$Phase, levels = ccSeurat_order[sub3])
-    sub1 = ccAFv2_order %in% factor(seurat2$ccAF)
-    seurat2$ccAF <- factor(seurat2$ccAF, levels = ccAFv2_order[sub1])
-    sub2 = ccAFv2_order %in% factor(seurat2$ccAFv2)
-    seurat2$ccAFv2 <- factor(seurat2$ccAFv2, levels = ccAFv2_order[sub2])
-    p1 = DimPlot(seurat2, reduction = "umap", label=F, pt.size = 1, group.by = 'Phase', cols = ccSeurat_colors)
-    c1 = DimPlot(seurat2, reduction = "umap", label=F, pt.size = 1, group.by = 'ccAF', cols = ccAFv2_colors[sub1])
-    c2 = DimPlot(seurat2, reduction = "umap", label=F, pt.size = 1, group.by = 'ccAFv2', cols = ccAFv2_colors[sub2])
-    #pdf(file.path(paste0('model/testing/FINAL/', tag1, '_ccAFv2_', datas1, '.pdf')), width = 10, height = 8)
-    pdf(file.path(paste0('model/testing/FINAL/', tag1, '_ccAFv2_v2_', datas1, '.pdf')), width = 10, height = 8)
+    sub1 = ccSeurat_order %in% factor(seurat2$Phase)
+    seurat2$Phase <- factor(seurat2$Phase, levels = ccSeurat_order[sub1])
+    sub2 = ccAF_order %in% factor(seurat2$ccAF)
+    seurat2$ccAF <- factor(seurat2$ccAF, levels = ccAFv2_order[sub2])
+    sub3 = ccAFv2_order %in% factor(seurat2$ccAFv2)
+    seurat2$ccAFv2 <- factor(seurat2$ccAFv2, levels = ccAFv2_order[sub3])
+    p1 = DimPlot(seurat2, reduction = "umap", label=F, pt.size = 1, group.by = 'Phase', cols = ccSeurat_colors[sub1])
+    c1 = DimPlot(seurat2, reduction = "umap", label=F, pt.size = 1, group.by = 'ccAF', cols = ccAF_colors[sub2])
+    c2 = DimPlot(seurat2, reduction = "umap", label=F, pt.size = 1, group.by = 'ccAFv2', cols = ccAFv2_colors[sub3])
+    pdf(file.path(figdir,paste0('ccAFv2_layers_', tag1,'_', datas1, '.pdf')), width = 10, height = 8)
     # umaps
     lst = list(p1, c1, c2)
     grid.arrange(grobs = lst, layout_matrix = rbind(c(1,NA), c(2,3)), top = "")
