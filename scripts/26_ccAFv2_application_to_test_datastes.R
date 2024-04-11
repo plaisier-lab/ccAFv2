@@ -18,7 +18,7 @@
 ##########################################################
 
 ### Docker command to start-up Seurat capable analysis container
-# docker run -it -v '/home/soconnor/old_home:/files' cplaisier/ccafv2_extra
+# docker run -it -v '/home/soconnor/old_home/ccNN/ccAFv2:/files' cplaisier/ccafv2_extra
 
 ### Packages required to run analyses
 library(dplyr)
@@ -37,7 +37,10 @@ library(aricode)
 library(reticulate)
 use_python('/usr/bin/python3')
 
-setwd('/files')
+#setwd('/files')
+resdir = 'data'
+output = 'results/testing_ccAFv2'
+dir.create(output, showWarnings = FALSE)
 
 devtools::install_github("plaisier-lab/ccafv2_R/ccAFv2")
 library(ccAFv2)
@@ -54,9 +57,11 @@ ccSeurat_order = c('G1', 'S', 'G2M')
 ### Nowakowski_2017 GBM ###
 ###########################
 
+tag = 'Nowakowski'
+savedir = file.path(output, tag)
+
 # Load up count data and start Seurat
-setwd('/files/scGlioma/Nowakowski')
-d1 = read.table(gzfile('exprMatrix.tsv.gz'),sep='\t',row.names=1,header=T)
+d1 = read.table(gzfile(file.path(resdir, tag, 'exprMatrix.tsv.gz')),sep='\t',row.names=1,header=T)
 dim(d1) #[1] 56864  4261
 d1 = d1[which(apply(d1,1,sum)!=0),]
 dim(d1) #[1] 49870  4261
@@ -130,11 +135,10 @@ for(pheno1 in colnames(meta)) {
 # Classify with ccAFv2
 seurat1 = Nowakowski_2017
 seurat1 = PredictCellCycle(seurat1, assay = 'RNA', gene_id = 'symbol')
-table(seurat1$ccAFv2)
-
-write.csv(seurat1$ccAFv2, file.path('Nowakowski_ccAFv2_calls.csv'))
-write.csv(table(seurat1$ccAFv2, seurat1$WGCNAcluster_restricted), file.path('Nowakowski_ccAFv2_calls_by_cell_type.csv'))
-saveRDS(seurat1, file.path('Nowakowski_2017_with_ccAFv2_calls.rds'))
+# Save out calls and rds object
+write.csv(seurat1$ccAFv2, file.path(savedir, 'Nowakowski_ccAFv2_calls.csv'))
+write.csv(table(seurat1$ccAFv2, seurat1$WGCNAcluster_restricted), file.path(savedir, 'Nowakowski_ccAFv2_calls_by_cell_type.csv'))
+saveRDS(seurat1, file.path(savedir, 'Nowakowski_2017_with_ccAFv2_calls.rds'))
 
 # Prepare for plotting
 df1 = data.frame(table(seurat1$ccAFv2))
@@ -159,7 +163,7 @@ for(i in c(1:length(unique(seurat1$WGCNAcluster_restricted)))){
 colnames(cf_1) = colnames(cf)
 rownames(cf_1) = rownames(cf)
 sub1 = rownames(data.frame(ccAFv2_colors)) %in% rownames(cf_1)
-pdf('ccAFv2_percentages_010824.pdf', width = 10, height = 8)
+pdf(file.path(savedir, 'Nowakowski_ccAFv2_percentages.pdf', width = 10, height = 8)
 par(mar = c(8, 8, 8, 8) + 2.0)
 barplot(cf_1, xlab = "", ylab = "Cell Percentage", las=2, legend.text = rownames(cf_1),  col = ccAFv2_colors[sub1], args.legend=list(x=ncol(cf_1) + 15, y=max(colSums(cf_1)), bty = "n"))
 dev.off()
@@ -169,16 +173,18 @@ dev.off()
 ## GSE67833: Llorens-Bobadilla ##
 #################################
 
-setwd('/files/scGlioma/GSE67833')
-exp_mat = read.csv('GSE67833_Gene_expression_matrix.csv',header=T,row.names=1)
+tag = 'GSE67833'
+savedir = file.path(output, tag)
 
+# Read in data
+exp_mat = read.csv(file.path(resdir, tag, 'GSE67833_Gene_expression_matrix.csv'),header=T,row.names=1)
 GSE67833 = CreateSeuratObject(counts = exp_mat, min.cells = 3, min.features = 200)
 dim(GSE67833)
 GSE67833 = NormalizeData(object = GSE67833)
 GSE67833 = FindVariableFeatures(object = GSE67833, selection.method='vst', nfeatures=3000)
 GSE67833 = ScaleData(GSE67833)
 
-meta_data = read.csv('meta_data.csv', header=T, row.names=2)
+meta_data = read.csv(file.path(resdir, tag, 'meta_data.csv'), header=T, row.names=2)
 GSE67833[['cell.type']] = meta_data[colnames(exp_mat), 2]
 
 # For classification
@@ -188,7 +194,7 @@ GSE67833.NI = subset(GSE67833, cells = colnames(GSE67833.NI)[!is.na(GSE67833.NI[
 cutoff1 = 0.5
 # Classify with ccAFv2
 GSE67833.NI = PredictCellCycle(GSE67833.NI, assay = 'RNA', cutoff = cutoff1, species = 'mouse', gene_id='ensembl')
-saveRDS(GSE67833.NI, file.path('Llorens_Bobadilla_with_ccAFv2_calls.rds'))
+saveRDS(GSE67833.NI, file.path(savedir, 'Llorens_Bobadilla_with_ccAFv2_calls.rds'))
 
 # Prepare for plotting
 seurat1 = GSE67833.NI
@@ -218,7 +224,7 @@ for(i in c(1:length(unique(seurat1$cell.type)))){
 colnames(cf_1) = colnames(cf)
 rownames(cf_1) = rownames(cf)
 sub1 = rownames(data.frame(ccAFv2_colors)) %in% rownames(cf_1)
-pdf(paste0('GSE67833_ccAFv2_percentages_011224_', cutoff1,'.pdf'), width = 10, height = 8)
+pdf(file.path(savedir, 'GSE67833_ccAFv2_percentages_', cutoff1,'.pdf'), width = 10, height = 8)
 par(mar = c(8, 8, 8, 8) + 2.0)
 barplot(cf_1, xlab = "", ylab = "Cell Percentage", las=2, legend.text = rownames(cf_1),  col = ccAFv2_colors[sub1], args.legend=list(x=ncol(cf_1) + 15, y=max(colSums(cf_1)), bty = "n"))
 dev.off()
@@ -227,10 +233,12 @@ dev.off()
 ############################
 ### Dulken: PRJNA324289 ####
 ############################
-setwd('/files/scGlioma/PRJNA324289')
+
+tag = 'PRJNA324289'
+savedir = file.path(output, tag)
 
 # Load in data
-d1 = read.csv('Counts_AllLiveSingleCells_IN_VIVO_ONLY.csv',header=T,row.names=1)
+d1 = read.csv(file.path(resdir, tag, 'Counts_AllLiveSingleCells_IN_VIVO_ONLY.csv'),header=T,row.names=1)
 ct1 = sapply(colnames(d1), function(x) { strsplit(x,'_')[[1]][1] })
 PRJNA324289 = CreateSeuratObject(counts = d1, min.cells = 3, min.features = 200)
 PRJNA324289[['cell_type']] = ct1
@@ -238,7 +246,7 @@ PRJNA324289[['cell_type']] = ct1
 # Classify with ccAFv2
 cutoff1 = 0.5
 PRJNA324289 = PredictCellCycle(PRJNA324289, species='mouse', gene_id='symbol', cutoff = cutoff1)
-saveRDS(PRJNA324289, file.path('Dulken_with_ccAFv2_calls.rds'))
+saveRDS(PRJNA324289, file.path(savedir, 'Dulken_with_ccAFv2_calls.rds'))
 
 # Prepare for plotting
 #df1 = data.frame(table(PRJNA324289$ccAFv2))
@@ -265,7 +273,7 @@ for(i in c(1:length(unique(seurat1$cell_type)))){
 colnames(cf_1) = colnames(cf)
 rownames(cf_1) = rownames(cf)
 sub1 = rownames(data.frame(ccAFv2_colors)) %in% rownames(cf_1)
-pdf(paste0('Dulken_ccAFv2_percentages_011024_', cutoff1,'.pdf'), width = 10, height = 8)
+pdf(file.path(savedir, 'Dulken_ccAFv2_percentages_', cutoff1,'.pdf'), width = 10, height = 8)
 par(mar = c(8, 8, 8, 8) + 2.0)
 barplot(cf_1, xlab = "", ylab = "Cell Percentage", las=2, legend.text = rownames(cf_1),  col = ccAFv2_colors[sub1], args.legend=list(x=ncol(cf_1) + 15, y=max(colSums(cf_1)), bty = "n"))
 dev.off()
@@ -275,13 +283,16 @@ dev.off()
 ##  GSE165555 ##
 #################################
 
-setwd('/files/ccNN/testData/GSE165555')
+tag = 'GSE165555'
+savedir = file.path(output, tag)
+dir.create(savedir)
+
 # Load scRNA-seq data
-data <- readRDS('GSM5039270_scSeq.rds')
+data <- readRDS(file.path(resdir, tag, 'GSM5039270_scSeq.rds'))
 dim(data) #25803 24261
 # Classify with ccAFv2
 data = PredictCellCycle(data, species='mouse', gene_id='symbol')
-saveRDS(data, file.path('Cebrian_Silla_with_ccAFv2_calls.rds'))
+saveRDS(data, file.path(savedir, 'Cebrian_Silla_with_ccAFv2_calls.rds'))
 seurat1 = data
 df1 = data.frame(table(seurat1$ccAFv2))
 rownames(df1) = df1$Var1
@@ -306,7 +317,7 @@ for(i in c(1:length(unique(seurat1$Cell_Type)))){
 colnames(cf_1) = colnames(cf)
 rownames(cf_1) = rownames(cnewdf)[-length(rownames(cnewdf))]
 sub1 = rownames(data.frame(ccAFv2_colors)) %in% rownames(cf_1)
-pdf('GSE165555_ccAFv2_percentages_010824.pdf', width = 10, height = 6)
+pdf(file.path(savedir, 'GSE165555_ccAFv2_percentages.pdf'), width = 10, height = 6)
 par(mar = c(8, 8, 8, 8) + 2.0)
 barplot(cf_1, xlab = "", ylab = "Cell Percentage", las=2, legend.text = rownames(cf_1),  col = ccAFv2_colors[sub1], args.legend=list(x=ncol(cf_1) + 8, y=max(colSums(cf_1)), bty = "n"))
 dev.off()
@@ -326,55 +337,9 @@ for(i in c(1:length(unique(seurat1$Cell_Type)))){
 colnames(cf_1) = colnames(cf)
 rownames(cf_1) = rownames(cnewdf)[-length(rownames(cnewdf))]
 sub1 = rownames(data.frame(ccSeurat_colors)) %in% rownames(cf_1)
-pdf('GSE165555_ccSeurat_percentages_010824.pdf', width = 10, height = 6)
+pdf(file.path(savedir, 'GSE165555_ccSeurat_percentages.pdf'), width = 10, height = 6)
 par(mar = c(8, 8, 8, 8) + 2.0)
 barplot(cf_1, xlab = "", ylab = "Cell Percentage", las=2, legend.text = rownames(cf_1),  col = ccSeurat_colors[sub1], args.legend=list(x=ncol(cf_1) + 12, y=max(colSums(cf_1)), bty = "n"))
-dev.off()
-
-# Subset to just B cells & split by Predicted_Region_Bcells
-seurat2 = subset(seurat1, subset = Cell_Type == 'B cells')
-dim(seurat2) #[1] 25803  3369
-seurat3 = subset(seurat2, subset = Predicted_Region_Bcells != 'NA')
-dim(seurat3) #[1] 25803  2413
-df = data.frame(seurat3$ccAFv2, seurat3$Predicted_Region_Bcells)
-colnames(df) = c('ccAFv2', 'Predicted_Region')
-
-pdf('GSE165555_B_cells_ccAFv2_by_region_010824.pdf', width = 10, height = 6)
-ggplot(df, aes(ccAFv2)) + geom_bar(aes(fill = Predicted_Region), position = "dodge")
-dev.off()
-
-
-# Load snRNA-seq data
-data1 <- readRDS('GSE165551_sNucSeq.rds')
-dim(data1)# 23079 45820
-# Classify with ccAFv2
-data1 = PredictCellCycle(data1, species='mouse', gene_id='symbol')
-seurat2 = data1
-df1 = data.frame(table(seurat2$ccAFv2))
-rownames(df1) = df1$Var1
-df1$perc = df1$Freq/dim(seurat2)[2]*100
-
-# organize x-axis order
-seurat2$CellType_Detailed <- factor(seurat2$CellType_Detailed, levels = c('Ependymal', 'Astrocytes', 'B cells', 'Dividing/C cells', 'A cells', 'OPRM1 Neuron', 'VGLUT1 Neuron', 'CHAT Neuron', 'VGLUT2 Neuron', 'PTHLH Interneuron', 'PDYN Interneuron', 'Interneuron1', 'Interneuron2', 'SST Interneuron', 'TH Interneuron',  'Oligodendrocyte', 'OPC/Oligodendrocyte', 'Microglia', 'Endothelial', 'Pericyte/VSMC', 'SN-D1', 'SN-D2', 'Tac1 SN-D1', 'Vasc Leptomeningeal'))
-
-#--- ccAFv2 vs. cluster ids stacked barplot ---#
-cf <- table(seurat2$ccAFv2, seurat2$CellType_Detailed)
-totals <- colSums(cf)
-data.frame(totals)
-cnewdf <- rbind(cf, totals)
-cnewdf = cnewdf[apply(cnewdf[,-1], 1, function(x) !all(x==0)),]
-cf_1 = matrix(ncol=length(unique(seurat2$CellType_Detailed)), nrow=length(unique(seurat2$ccAFv2)))
-for(i in c(1:length(unique(seurat2$CellType_Detailed)))){
-  for(n in c(1:length(unique(seurat2$ccAFv2)))) {
-    cf_1[n,i] = cnewdf[n,i]/cnewdf[length(unique(seurat2$ccAFv2))+1, i]
-  }
-}
-colnames(cf_1) = colnames(cf)
-rownames(cf_1) = rownames(cnewdf)[-length(rownames(cnewdf))]
-sub1 = rownames(data.frame(ccAFv2_colors)) %in% rownames(cf_1)
-pdf('GSE165555_snrnaseq_ccAFv2_percentages_011824.pdf', width = 10, height = 6)
-par(mar = c(8, 8, 8, 8) + 2.0)
-barplot(cf_1, xlab = "", ylab = "Cell Percentage", las=2, legend.text = rownames(cf_1),  col = ccAFv2_colors[sub1], args.legend=list(x=ncol(cf_1) + 12, y=max(colSums(cf_1)), bty = "n"))
 dev.off()
 
 
@@ -383,20 +348,22 @@ dev.off()
 #################################
 # Single‐cell analysis reveals dynamic changes of neural cells in developing human spinal cord
 
-setwd('/files/ccNN/testData/GSE136719')
+tag = 'GSE136719'
+savedir = file.path(output, tag)
+dir.create(savedir, showWarnings = FALSE)
 
 scProcessData = function(week1, location1, type1 = 'Cells', v1 = 3000, v2 = 50000, h1 = 0.001, h2 = 0.08, assay1 = 'SCT', cutoff1 = 0.5, resolution = 0.8, save_dir = 'analysis_output', obj_dir = 'seurat_objects', symbol = F){
   cat('\n Loading', week1, 'data\n')
   cat('\n Location:',location1,'\n')
   # Set directory to pull data from
-  resdir1 = file.path(paste0(week1, '/', location1,'/',type1, '/outs/'))
-  resdir2 = file.path(paste0(week1, '/', location1,'/', type1, '/', save_dir))
-  resdir3 = file.path(paste0(week1, '/', location1, '/', type1,'/', obj_dir))
+  resdir1 = file.path(resdir, tag, paste0(week1, '/', location1,'/',type1, '/outs/filtered_feature_bc_matrix'))
+  resdir2 = file.path(resdir, tag, paste0(week1, '/', location1,'/', type1, '/', save_dir))
+  resdir3 = file.path(resdir, tag, paste0(week1, '/', location1, '/', type1,'/', obj_dir))
   # Make directories to save out analyses
   dir.create(resdir2, showWarnings = FALSE)
   dir.create(resdir3, showWarnings = FALSE)
   # Load data
-  data = Read10X(file.path(resdir1), gene.column=2)
+  data = Read10X(resdir1, gene.column=2)
   rownames(data) = gsub("_", "-", rownames(data))
   cat('\n  Raw cells:', dim(data)[2], 'cells', dim(data)[1], 'genes \n')
   cat('\n Performing quality control\n')
@@ -442,13 +409,13 @@ scProcessData = function(week1, location1, type1 = 'Cells', v1 = 3000, v2 = 5000
   #seurat2 = SCTransform(seurat2, verbose = FALSE, return.only.var.genes = FALSE) # scale all genes
   #seurat2 = PredictCellCycle(seurat2, do_sctransform=FALSE, species='human', gene_id='symbol') # normalized by sct before so don't need to do it in PredictCellCycle function
   seurat2 = PredictCellCycle(seurat2, species='human', gene_id='symbol') #do normalization in function
-  saveRDS(seurat2, file.path(paste0(resdir2, '/', week1, '_filtered_with_ccAFv2.rds')))
+  saveRDS(seurat2, file.path(paste0(resdir3, '/', week1, '_filtered_with_ccAFv2.rds')))
   seurat2 = SCTransform(seurat2, verbose = FALSE) # run regular sctransform after
   df1 = data.frame(table(seurat2$ccAFv2))
   df1 = df1[df1$Freq != 0,]
   rownames(df1) = df1$Var1
   sub1 = rownames(data.frame(ccAFv2_colors)) %in% df1$Var1
-  write.csv(data.frame(((df1['Freq']/dim(seurat2)[2])*100)), file.path(paste0(resdir2, '/', week1, '_ccAFv2_call_frequency.csv')))
+  write.csv(data.frame(((df1['Freq']/dim(seurat2)[2])*100)), file.path(savedir, paste0(week1,'_',location1,'_',type1, '_ccAFv2_call_frequency.csv')))
   s.genes <- cc.genes$s.genes
   g2m.genes <- cc.genes$g2m.genes
   seurat2 = CellCycleScoring(seurat2, s.genes, g2m.genes, set.ident=FALSE)
@@ -464,7 +431,7 @@ scProcessData = function(week1, location1, type1 = 'Cells', v1 = 3000, v2 = 5000
   d1 = DimPlot(seurat2, reduction = "umap", label=F, group.by="seurat_clusters") + ggtitle("seurat_clusters")
   d2 = DimPlot(seurat2, reduction = "umap", label=F, group.by="Phase", cols = ccSeurat_colors) + ggtitle("Phase")
   d3 = DimPlot(seurat2, reduction = "umap", label=F, group.by="ccAFv2", cols = ccAFv2_colors[sub1]) + ggtitle("ccAFv2")
-  pdf(file.path(paste0(resdir2, '/', week1, '.pdf')), height = 8, width = 10)
+  pdf(file.path(paste0(savedir, '/', week1, '_',type1,'.pdf')), height = 8, width = 10)
   lst = list(d1, d2, d3)
   grid.arrange(grobs = lst, layout_matrix = rbind(c(1, 2), c(3, NA)), top = "")
   #--- ccAFv2 stacked barplot ---#
@@ -492,14 +459,14 @@ snProcessData = function(week1, location1, type1 = 'Nuc', v1 = 200, v2 = 15000, 
   cat('\n Loading', week1, 'data\n')
   cat('\n Location:',location1,'\n')
   # Set directory to pull data from
-  resdir1 = file.path(paste0(week1, '/', location1,'/',type1, '/outs/'))
-  resdir2 = file.path(paste0(week1, '/', location1,'/', type1, '/', save_dir))
+  resdir1 = file.path(resdir, tag, paste0(week1, '/', location1,'/',type1, '/outs/filtered_feature_bc_matrix'))
+  resdir2 = file.path(resdir, tag, paste0(week1, '/', location1,'/', type1, '/', save_dir))
   resdir3 = file.path(paste0(week1, '/', location1, '/', type1,'/', obj_dir))
   # Make directories to save out analyses
   dir.create(resdir2, showWarnings = FALSE)
   dir.create(resdir3, showWarnings = FALSE)
   # Load data
-  data = Read10X(file.path(resdir1), gene.column=2)
+  data = Read10X(resdir1, gene.column=2)
   cat('\n  Raw cells:', dim(data)[2], 'cells', dim(data)[1], 'genes \n')
   rownames(data) = gsub("_", "-", rownames(data))
   cat('\n Performing quality control\n')
@@ -542,13 +509,13 @@ snProcessData = function(week1, location1, type1 = 'Nuc', v1 = 200, v2 = 15000, 
   #seurat2 = SCTransform(seurat2, verbose = FALSE, return.only.var.genes = FALSE) # scale all genes
   #seurat2 = PredictCellCycle(seurat2, do_sctransform=FALSE, species='human', gene_id='symbol') # normalized by sct before so don't need to do it in PredictCellCycle function
   seurat2 = PredictCellCycle(seurat2, species='human', gene_id='symbol') #do normalization in function
-  saveRDS(seurat2, file.path(paste0(resdir2, '/', week1, '_filtered_with_ccAFv2.rds')))
+  saveRDS(seurat2, file.path(paste0(resdir3, '/', week1, '_filtered_with_ccAFv2.rds')))
   seurat2 = SCTransform(seurat2, verbose = FALSE) # run regular sctransform after
   df1 = data.frame(table(seurat2$ccAFv2))
   df1 = df1[df1$Freq != 0,]
   rownames(df1) = df1$Var1
   sub1 = rownames(data.frame(ccAFv2_colors)) %in% df1$Var1
-  write.csv(data.frame(((df1['Freq']/dim(seurat2)[2])*100)), file.path(paste0(resdir2, '/', week1, '_ccAFv2_call_frequency.csv')))
+  write.csv(data.frame(((df1['Freq']/dim(seurat2)[2])*100)), file.path(savedir, paste0(week1,'_',type1, '_ccAFv2_call_frequency.csv')))
   s.genes <- cc.genes$s.genes
   g2m.genes <- cc.genes$g2m.genes
   seurat2 = CellCycleScoring(seurat2, s.genes, g2m.genes, set.ident=FALSE)
@@ -564,7 +531,7 @@ snProcessData = function(week1, location1, type1 = 'Nuc', v1 = 200, v2 = 15000, 
   d1 = DimPlot(seurat2, reduction = "umap", label=F, group.by="seurat_clusters") + ggtitle("seurat_clusters")
   d2 = DimPlot(seurat2, reduction = "umap", label=F, group.by="Phase", cols = ccSeurat_colors) + ggtitle("Phase")
   d3 = DimPlot(seurat2, reduction = "umap", label=F, group.by="ccAFv2", cols = ccAFv2_colors[sub1]) + ggtitle("ccAFv2")
-  pdf(file.path(paste0(resdir2, '/', week1, '.pdf')), height = 8, width = 10)
+  pdf(file.path(paste0(savedir, '/', week1, '_',type1,'.pdf')), height = 8, width = 10)
   lst = list(d1, d2, d3)
   grid.arrange(grobs = lst, layout_matrix = rbind(c(1, 2), c(3, NA)), top = "")
   #--- ccAFv2 stacked barplot ---#
@@ -617,41 +584,18 @@ datas_nucs[['GW20_T']] = snProcessData(week1 = 'GW20', location1 = 'Thoracic', v
 datas_nucs[['GW23_S']] = snProcessData(week1 = 'GW23', location1 = 'Spinal_Whole', v2= 28000)
 
 
-AMI = list()
-calculateAMI = function(week1, location1){
-  cat('\n Loading', week1, 'data\n')
-  cat('\n Location:',location1,'\n')
-  # Set directory to pull data from
-  resdir1 = file.path(paste0(week1, '/', location1,'/Cells/analysis_output'))
-  resdir2 = file.path(paste0(week1, '/', location1,'/Nuc/analysis_output'))
-  # Load data
-  seurat1 = readRDS(file.path(resdir1, '/', week1, '_filtered_with_ccAFv2.rds')
-
-  seurat2 = readRDS(file.path(resdir2, '/', week1, '_filtered_with_ccAFv2.rds')
-
-
-
-# AMI
-subset1 = seurat2[,seurat2$ccAFv2 != 'Unknown']
-predlab = subset1$ccAFv2
-predlab = list(data.frame(predlab)$predlab)[[1]]
-truelab = subset1$Phase
-truelab = list(data.frame(truelab)$truelab)[[1]]
-AMI1[[datas1]][[tag1]] <- round(AMI(truelab, predlab), 2)
-
-
-
 ###############################
 # GSE155121 for spatial - GW4
 ##############################
 
-setwd('/files/ccNN/testData/GSE155121')
-# Convert h5ad to h5seurat
-#Convert("gw4_all.h5ad", "gw4_all.h5seurat")
-# Load data
-data <- LoadH5Seurat("gw4_all.h5seurat")
+tag = 'GSE155121'
+resdir2 = file.path(resdir1, tag, 'GW4')
+savedir = file.path(output, tag)
 
+# Load data
+data <- LoadH5Seurat(file.path(resdir2, 'gw4_all.h5seurat'))
 seurat1 = data
+
 # Perform QC
 # Genes as gene symbols
 mito.genes <- grep("MT-", rownames(seurat1))
@@ -665,7 +609,7 @@ v2 <- 50000
 h1 <- 0.01
 h2 <- 0.12
 
-pdf(file.path('GW4_all_QC_plot_to_choose_cutoffs.pdf'))
+pdf(file.path(resdir2, 'GW4_all_QC_plot_to_choose_cutoffs.pdf'))
 plot(seurat1@meta.data$nCount_RNA, seurat1@meta.data$percent.mito,
      xlab = 'nCount_RNA', ylab = 'nFeature_RNA', pch = 20)
 abline(v = v1, col = 'red', lwd =3, lty =2)

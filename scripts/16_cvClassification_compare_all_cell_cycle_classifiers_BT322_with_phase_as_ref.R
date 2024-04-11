@@ -117,7 +117,7 @@ savedir = 'compare_classifiers'
 #---------------------------------------------------
 
 # Set parameters for analysis
-nfolds = 1
+nfolds = 10
 ncores = 10
 
 # Classifiers to compare

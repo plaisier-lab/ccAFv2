@@ -317,9 +317,9 @@ if layers:
         ### ccAFv2 CV ###
         #################
         ## Load up data
-        if not os.path.exists(resdir2+'/ccAFv2'):
-            os.makedirs(resdir2+'/ccAFv2')
-        savedir = resdir2+'/ccAFv2'
+        if not os.path.exists(resdir2+'/CV/ccAFv2'):
+            os.makedirs(resdir2+'/CV/ccAFv2')
+        savedir = resdir2+'/CV/ccAFv2'
         if not exists(savedir+'/CV_classification_report.csv'):
             print('\nccAFv2 cross-validation...')
             for k in range(nfolds):

@@ -17,7 +17,7 @@
 ## mention who built it. Thanks. :-)                    ##
 ##########################################################
 
-#docker run -it -v '/home/soconnor/old_home:/files' cplaisier/ccnn
+#docker run -it -v '/home/soconnor/old_home/ccNN/ccAFv2:/files' cplaisier/ccnn
 
 # General
 from importlib.resources import path
@@ -45,14 +45,10 @@ logging.getLogger('tensorflow').disabled = True
 ################
 ## Load model ##
 ################
-os.chdir('ccAFv2_py')
 
-with path('ccAF', 'ccAFv2_model.h5') as inPath:
-    _classifier = keras.models.load_model(inPath)
-with path('ccAF', 'ccAFv2_genes.csv') as inPath:
-    _genes = list(pd.read_csv(inPath, index_col=0, header=0)['human_ensembl'])
-with path('ccAF', 'ccAFv2_classes.txt') as inPath:
-    _classes = list(pd.read_csv(inPath, header=None)[0])
+_classifier = keras.models.load_model('ccAFv2_model.h5')
+_genes = list(pd.read_csv('ccAFv2_genes.csv', index_col=0, header=0)['human_ensembl'])
+_classes = list(pd.read_csv('ccAFv2_classes.txt', header=None)[0])
 
 ###############
 ## Functions ##
@@ -154,16 +150,17 @@ def _predict_new_data(new_data, classifier):
     return classifier.predict(new_data)
 
 # Folder and tag set up
-# Test GSE155121 W8-1
-os.chdir('../ccNN')
+resdir = 'data'
 tags = ['GSE155121']
 tag = 'NSC'
-ws = 'W8-1'
-resdir = 'testData'
-resdir5 = 'results'
+ws1 = 'W8-1'
+resdir2 = resdir+'/'+tags[0]+'/'+tag
+savedir = 'results/ccAFv2_compare_seurat_scanpy'
+if not os.path.exists(savedir):
+    os.makedirs(savedir)
 
 # Read in data
-data1 = sc.read_h5ad(resdir+'/GSE155121/NSC/'+ws+'_normalized_ensembl_test2.h5ad') # has ccAFv2 R in metadata
+data1 = sc.read_h5ad(resdir2+'/'+ws1+'_normalized_ensembl.h5ad') # has ccAFv2 R in metadata
 predictions = predict_labels(data1)
 data1.obs['ccAFv2_py'] = predictions[0]
 
@@ -171,4 +168,4 @@ data1.obs['ccAFv2_py'] = predictions[0]
 sum(data1.obs['ccAFv2'] == data1.obs['ccAFv2_py'])/len(data1) # 1.0  yes
 
 # Save out obs to csv
-pd.DataFrame(data1.obs).to_csv('R_vs_python_GSE155121_compare.csv')
+pd.DataFrame(data1.obs).to_csv(savedir+'/GSE155121_PCW8_compare.csv')
