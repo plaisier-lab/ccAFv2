@@ -17,7 +17,7 @@
 ## mention who built it. Thanks. :-)                    ##
 ##########################################################
 
-#docker run -it -v '/home/soconnor/old_home:/files' cplaisier/ccnn
+#docker run -it -v '/home/soconnor/old_home/ccNN/ccAFv2:/files' cplaisier/ccnn
 
 # General
 from importlib.resources import path
@@ -183,13 +183,17 @@ def _predict_new_data(new_data, classifier):
 
 # Folder and tag set up
 # change directory for testing
-os.chdir('../ccNN')
+os.chdir('../')
 tags = ['GSE155121']
 tag = 'NSC'
 ws = ['W3-1', 'W4-1', 'W4-2', 'W4-3', 'W5-1', 'W5-2', 'W5-3', 'W6-1', 'W7-1', 'W8-1', 'W9-1', 'W9-2', 'W12-1']
-#ws = ['W8-1']
-resdir = 'testData'
-resdir5 = 'results'
+resdir = 'data'
+output = 'results/cutoff_analysis'
+if not os.path.exists(output):
+    os.makedirs(output)
+    print ("Directory created")
+else:
+    print("Directory already exists")
 
 # Common parameters
 cutoffs = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
@@ -201,8 +205,8 @@ for tag1 in tags:
     for ws1 in ws:
         print('\nLoading '+tag1+' '+ws1+' data...')
         if tag1 == 'GSE155121':
-            resdir7 = resdir+'/'+tag1+'/NSC'
-            datasets[tag1] = sc.read_h5ad(resdir+'/GSE155121/NSC/'+ws1+'_normalized_ensembl_test2.h5ad')
+            resdir2 = resdir+'/'+tag1+'/NSC'
+            datasets[tag1] = sc.read_h5ad(resdir2+'/'+ws1+'_normalized_ensembl.h5ad')
             datasets[tag1].obs['new_clusters'] = datasets[tag1].obs['ccAFv2']
         datasets[tag1].obs['dataset'] = tag1
         datasets[tag1].obs['week_stage'] = ws1
@@ -217,13 +221,12 @@ for tag1 in tags:
         allInds = np.arange(0, nCells)
         numSamples = round(0.9*nCells)
         # Make folder to store downstream results
-        if not os.path.exists(resdir7+'/FINAL/'+ws1+'/redo_cutoff_analysis'):
-            os.makedirs(resdir7+'/FINAL/'+ws1+'/redo_cutoff_analysis')
+        savedir = resdir2+'/'+ws1+'/'+save_fold
+        if not os.path.exists(savedir):
+            os.makedirs(savedir)
             print ("Directory created")
         else:
             print("Directory already exists")
-        # Set saving directory
-        resdir8 = resdir7+'/FINAL/'+ws1+'/redo_cutoff_analysis'
         # Cross validation within dataset
         ccseurat_lab = ccAF1_scanpy.obs['Phase']
         for cutoff1 in cutoffs:
@@ -253,11 +256,10 @@ for tag1 in tags:
             sum(DF['True Labels'] == DF['Predictions'])/len(DF)
             # Save out data
             print('\nSaving out CV sensitivity analysis file...')
-            DF.to_csv(resdir8+'/ccAFv2_CV_sensitivity_analysis_'+str(cutoff1)+'_h5ad_030924.csv')
+            DF.to_csv(savedir+'/'+ws1+'_ccAFv2_CV_sensitivity_analysis_'+str(cutoff1)+'.csv')
 
 ### All week stages together
 # Adjusted Mutual Score
-ws = ['W3-1','W4-1', 'W4-2', 'W4-3', 'W5-1', 'W5-2', 'W5-3', 'W6-1', 'W7-1', 'W8-1', 'W9-1', 'W9-2', 'W12-1']
 input = {}
 results = {}
 cells_predicted = {}
@@ -267,14 +269,14 @@ for tag1 in tags:
     cells_predicted[tag1] = {}
     for ws1 in ws:
         print('Setting file path: GSE155121 NSC '+ws1+'\n')
-        resdir7 = resdir+'/'+tag1+'/NSC'
-        resdir8 = resdir7+'/FINAL/'+ws1+'/redo_cutoff_analysis'
+        resdir2 = resdir+'/'+tag1+'/NSC'
+        savedir = resdir2+'/'+ws1+'/'+save_fold
         input[tag1][ws1] = {}
         results[tag1][ws1] = {}
         cells_predicted[tag1][ws1] = {}
         for cutoff1 in cutoffs:
             print('Reading in file:\nCV sensitivity analysis for unknown cutoff '+str(cutoff1)+'\n')
-            input[tag1][ws1][cutoff1] = pd.read_csv(resdir8+'/ccAFv2_CV_sensitivity_analysis_'+str(cutoff1)+'_h5ad_030924.csv', low_memory=False)
+            input[tag1][ws1][cutoff1] = pd.read_csv(savedir+'/'+ws1+'_ccAFv2_CV_sensitivity_analysis_'+str(cutoff1)+'.csv', low_memory=False)
             # Set Unknowns to 'NaN' so can remove them easily during downstream analysis
             input[tag1][ws1][cutoff1]['Predictions'].replace('Unknown', np.nan, inplace=True)
         # we are using cutoff 0.0 but could easily use any cutoff
@@ -319,7 +321,7 @@ for tag1 in tags:
     df2 = pd.DataFrame([col1, col2, col3, col4, col5]).T
     df2.rename(columns={0:'adjusted_mutual_score', 1:'cells_predicted', 2:'k', 3:'week_stage', 4:'cutoff'}, inplace=True)
     # Save out all information
-    df2.to_csv(resdir5+'/GSE155121/GSE155121_NSCs_cutoff_threshold_analysis_030924.csv')
+    df2.to_csv(output+'/GSE155121_NSCs_ccAFv2_likelihood_threshold_analysis.csv')
     all1 = df2
     ttest_sig = {}
     for cutoff1 in cutoffs[1:]:
@@ -327,18 +329,18 @@ for tag1 in tags:
         comp = all1[all1['cutoff']==cutoff1]['adjusted_mutual_score']
         ttest_sig[cutoff1] = scipy.stats.ttest_ind(ref, comp)[1]
     tmp = pd.DataFrame.from_dict(ttest_sig, orient='index') # significant at 0.5!!!!!!
-    tmp.to_csv(resdir5+'/GSE155121/GSE155121_NSCs_cutoff_threshold_analysis_stats_030924.csv')
+    tmp.to_csv(output+'/GSE155121_NSCs_ccAFv2_likelihood_threshold_analysis_statistics.csv')
     ttest_sig_corrected = statsmodels.stats.multitest.fdrcorrection(list(ttest_sig.values()))[1]
     tmp2 = pd.DataFrame(ttest_sig_corrected)
     tmp2.index = tmp.index
-    tmp2.to_csv(resdir5+'/GSE155121/GSE155121_NSCs_cutoff_threshold_analysis_stats_fdr_corrected_030924.csv') # significant at 0.5!!!!!!
+    tmp2.to_csv(output+'/GSE155121_NSCs_ccAFv2_likelihood_threshold_analysis_statistics_fdr_corrected.csv')
     for plot1 in ['adjusted_mutual_score', 'cells_predicted']:
         sns.set(style="whitegrid", font_scale=3)
         fig, ax1 = plt.subplots(figsize=(40,20))
         sns.boxplot(hue = "week_stage", y = plot1, x = "cutoff", data = all1, ax = ax1, palette = "husl")
         sns.move_legend(ax1, "best", bbox_to_anchor=(1,1), ncol=1)
         ax1.set(ylabel=plot1)
-        plt.savefig(resdir5+'/GSE155121/GSE155121_NSCs_cutoff_threshold_analysis_'+plot1+'_cutoff_and_week_stage_all_genes_remove_unknowns_030924.pdf')
+        plt.savefig(output+'/GSE155121_NSCs_ccAFv2_likelihood_threshold_analysis_'+plot1+'.pdf')
         plt.clf()
         # Plot median scatter plots
         median1 = {}
@@ -349,24 +351,12 @@ for tag1 in tags:
         all_ws_medians = pd.DataFrame(median1)
         all_ws_medians.index = cutoffs
         all_ws_medians.index.name = 'cutoff'
-        all_ws_medians.to_csv(resdir5+'/GSE155121/GSE155121_median_'+plot1+'_cutoff_for_all_week_stages_030924.csv')
-        median_of_all_ws_medians = []
-        for cutoff1 in cutoffs:
-            median_of_all_ws_medians.append(np.median(all_ws_medians.loc[cutoff1]))
-        median_of_all_ws_medians_df = pd.DataFrame(median_of_all_ws_medians)
-        median_of_all_ws_medians_df.index = cutoffs
-        median_of_all_ws_medians_df.index.name = 'cutoff'
-        median_of_all_ws_medians_df.rename(columns = {0:'median_'+plot1}, inplace=True)
-        sns.set(style="whitegrid", font_scale=3)
-        fig, ax1 = plt.subplots(figsize=(40,20))
-        sns.scatterplot(data = median_of_all_ws_medians_df, x = 'cutoff', y = 'median_'+plot1, s=150)
-        ax1.set_ylim(0,1)
-        plt.savefig(resdir5+'/GSE155121/GSE155121_median_'+plot1+'_cutoff_and_week_stage_all_genes_scatter_030924.pdf')
+        all_ws_medians.to_csv(output+'/GSE155121_NSCs_ccAFv2_likelihood_threshold_analysis_median_'+plot1+'_cutoff_for_all_week_stages.csv')
         plt.clf()
 
 # Plotting
-amis = pd.read_csv(resdir5+'/GSE155121/GSE155121_median_adjusted_mutual_score_cutoff_for_all_week_stages_030924.csv', index_col=0)
-cps = pd.read_csv(resdir5+'/GSE155121/GSE155121_median_cells_predicted_cutoff_for_all_week_stages_030924.csv', index_col=0)
+amis = pd.read_csv(output+'/GSE155121_NSCs_ccAFv2_likelihood_threshold_analysis_median_adjusted_mutual_score_cutoff_for_all_week_stages.csv', index_col=0)
+cps = pd.read_csv(output+'/GSE155121_NSCs_ccAFv2_likelihood_threshold_analysis_median_cells_predicted_cutoff_for_all_week_stages.csv', index_col=0)
 median_amis = []
 median_cps = []
 for cutoff1 in cutoffs:
@@ -385,5 +375,5 @@ ax.set_ylim(0.3,0.5)
 ax.set_xlim(50,100)
 for i, txt in enumerate(descrip):
     ax.annotate(txt, (x[i], y[i]))
-plt.savefig('results/GSE155121/GSE155121_AMI_cellsPredicted_together_all_week_stages_030924.pdf')
+plt.savefig(output+'/GSE155121_NSCs_ccAFv2_likelihood_threshold_analysis_AMI_cellsPredicted_together_all_week_stages_together.pdf')
 plt.clf()
