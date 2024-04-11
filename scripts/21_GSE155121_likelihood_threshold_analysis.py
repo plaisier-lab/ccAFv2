@@ -73,14 +73,10 @@ logging.getLogger('tensorflow').disabled = True
 ################
 ## Load model ##
 ################
-os.chdir('ccAFv2_py')
 
-with path('ccAF', 'ccAFv2_model.h5') as inPath:
-    _classifier = keras.models.load_model(inPath)
-with path('ccAF', 'ccAFv2_genes.csv') as inPath:
-    _genes = list(pd.read_csv(inPath, index_col=0, header=0)['human_ensembl'])
-with path('ccAF', 'ccAFv2_classes.txt') as inPath:
-    _classes = list(pd.read_csv(inPath, header=None)[0])
+_classifier = keras.models.load_model('ccAFv2_model.h5')
+_genes = list(pd.read_csv('ccAFv2_genes.csv', index_col=0, header=0)['human_ensembl'])
+_classes = list(pd.read_csv('ccAFv2_classes.txt', header=None)[0])
 
 ###############
 ## Functions ##
@@ -182,8 +178,6 @@ def _predict_new_data(new_data, classifier):
     return classifier.predict(new_data)
 
 # Folder and tag set up
-# change directory for testing
-os.chdir('../')
 tags = ['GSE155121']
 tag = 'NSC'
 ws = ['W3-1', 'W4-1', 'W4-2', 'W4-3', 'W5-1', 'W5-2', 'W5-3', 'W6-1', 'W7-1', 'W8-1', 'W9-1', 'W9-2', 'W12-1']
