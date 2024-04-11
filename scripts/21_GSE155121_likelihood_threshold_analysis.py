@@ -182,6 +182,7 @@ tags = ['GSE155121']
 tag = 'NSC'
 ws = ['W3-1', 'W4-1', 'W4-2', 'W4-3', 'W5-1', 'W5-2', 'W5-3', 'W6-1', 'W7-1', 'W8-1', 'W9-1', 'W9-2', 'W12-1']
 resdir = 'data'
+save_fold = 'cutoff_analysis'
 output = 'results/cutoff_analysis'
 if not os.path.exists(output):
     os.makedirs(output)
