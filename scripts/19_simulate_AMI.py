@@ -17,13 +17,19 @@
 ## mention who built it. Thanks. :-)                    ##
 ##########################################################
 
-
+#docker run -it -v '/home/soconnor/old_home/ccNN/ccAFv2:/files' cplaisier/ccnn
 
 from sklearn.metrics import adjusted_mutual_info_score as ami
 import random
 import numpy as np
 import copy
 import pandas as pd
+import os
+
+savedir = 'compare_classifiers'
+newpath = savedir+'/ami_simulation'
+if not os.path.exists(newpath):
+    os.makedirs(newpath)
 
 ############
 ## Guides ##
@@ -104,7 +110,8 @@ for guide_curr in ['ccSeurat_cyclone', 'peco_tricycle', 'SchwabeCC', 'reCAT', 'c
         results_mean[guide_curr][s1] = np.mean(shuffled)
         results_std[guide_curr][s1] = np.std(shuffled)
 
+
 df_results_mean = pd.DataFrame(results_mean)
 df_results_std = pd.DataFrame(results_std)
-df_results_mean.to_csv('results_mean.csv')
-df_results_mean.to_csv('results_stddev.csv')
+df_results_mean.to_csv(newpath+'/results_mean.csv')
+df_results_mean.to_csv(newpath+'/results_stddev.csv')
