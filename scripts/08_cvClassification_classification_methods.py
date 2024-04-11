@@ -181,10 +181,10 @@ for set1 in datasets:
 ### SVMrej CV ###
 #################
 
-if not os.path.exists(resdir2+'/SVMrej'):
-    os.makedirs(resdir2+'/SVMrej')
+if not os.path.exists(resdir2+'/CV/SVMrej'):
+    os.makedirs(resdir2+'/CV/SVMrej')
 
-savedir = resdir2+'/SVMrej'
+savedir = resdir2+'/CV/SVMrej'
 if not exists(savedir+'/CV_classification_report.csv'):
     # SVMrej multiprocessable function
     def runSVMrej(params):
@@ -223,10 +223,10 @@ if not exists(savedir+'/CV_classification_report.csv'):
 ### RF CV ###
 #############
 
-if not os.path.exists(resdir2+'/RFpy'):
-    os.makedirs(resdir2+'/RFpy')
+if not os.path.exists(resdir2+'/CV/RFpy'):
+    os.makedirs(resdir2+'/CV/RFpy')
 
-savedir = resdir2+'/RFpy'
+savedir = resdir2+'/CV/RFpy'
 if not exists(savedir+'/CV_classification_report.csv'):
     # RF multiprocessable function
     def runRF(params):
@@ -265,10 +265,10 @@ if not exists(savedir+'/CV_classification_report.csv'):
 ##############
 ### KNN CV ###
 ##############
-if not os.path.exists(resdir2+'/KNN'):
-    os.makedirs(resdir2+'/KNN')
+if not os.path.exists(resdir2+'/CV/KNN'):
+    os.makedirs(resdir2+'/CV/KNN')
 
-savedir = resdir2+'/KNN'
+savedir = resdir2+'/CV/KNN'
 if not exists(savedir+'/CV_classification_report.csv'):
     # Cross validation within dataset
     pred = []
@@ -302,10 +302,10 @@ if not exists(savedir+'/CV_classification_report.csv'):
 ### ACTINN CV - need to run on different docker / use classifier classifiersV6clp ##
 ###################################################################################
 """
-if not os.path.exists(resdir2+'/ACTINN'):
-    os.makedirs(resdir2+'/ACTINN')
+if not os.path.exists(resdir2+'/CV/ACTINN'):
+    os.makedirs(resdir2+'/CV/ACTINN')
 
-savedir = resdir2+'/ACTINN'
+savedir = resdir2+'/CV/ACTINN'
 if not exists(savedir+'/CV_classification_report.csv'):
     # Cross validation within dataset
     pred = []
