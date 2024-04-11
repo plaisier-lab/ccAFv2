@@ -17,7 +17,7 @@
 ## mention who built it. Thanks. :-)                    ##
 ##########################################################
 
-#docker run -it -v '/home/soconnor/old_home:/files' cplaisier/ccnn
+#docker run -it -v '/home/soconnor/old_home/ccNN/ccAFv2:/files' cplaisier/ccnn
 
 #--------------------------------
 # Set up section / load packages
@@ -79,6 +79,7 @@ logging.getLogger('tensorflow').disabled = True
 os.chdir('ccAFv2_py')
 
 with path('ccAF', 'ccAFv2_model.h5') as inPath:
+#with path('ccAF', 'ccAFv2_model.h5') as inPath:
     _classifier = keras.models.load_model(inPath)
 with path('ccAF', 'ccAFv2_genes.csv') as inPath:
     _genes = list(pd.read_csv(inPath, index_col=0, header=0)['human_ensembl'])
@@ -185,33 +186,35 @@ def _predict_new_data(new_data, classifier):
     """
     return classifier.predict(new_data)
 
-
-
-# Folder and tag set up
-os.chdir('../ccNN')
+# Folder set up
+os.chdir('../')
 tags = ['GSE155121']
-ws = ['W3-1', 'W4-1', 'W4-2', 'W4-3', 'W5-1', 'W5-2', 'W5-1', 'W6-1', 'W7-1', 'W8-1', 'W9-1', 'W9-2', 'W12-1']
 tag = 'NSC'
-resdir = 'testData'
-resdir5 = 'results'
-nfolds = 10
+ws = ['W3-1', 'W4-1', 'W4-2', 'W4-3', 'W5-1', 'W5-2', 'W5-3', 'W6-1', 'W7-1', 'W8-1', 'W9-1', 'W9-2', 'W12-1']
+resdir = 'data'
+output = 'results/cutoff_analysis'
+savedir = 'results/matched_cell_perc_analysis'
+if not os.path.exists(savedir):
+    os.makedirs(savedir)
+
+
 
 # Load cutoff analysis info
-cells_pred_cutoff = pd.read_csv(resdir5+'/GSE155121/GSE155121_median_cells_predicted_cutoff_for_all_week_stages_030924.csv', index_col=0)
-adjusted_mut_cutoff = pd.read_csv(resdir5+'/GSE155121/GSE155121_median_adjusted_mutual_score_cutoff_for_all_week_stages_030924.csv', index_col=0)
-all_info_cutoff = pd.read_csv(resdir5+'/GSE155121/GSE155121_NSCs_cutoff_threshold_analysis_030924.csv', index_col=0)
+cells_pred_cutoff = pd.read_csv(output+'/GSE155121_NSCs_ccAFv2_likelihood_threshold_analysis_median_cells_predicted_cutoff_for_all_week_stages.csv', index_col=0)
+adjusted_mut_cutoff = pd.read_csv(output+'/GSE155121_NSCs_ccAFv2_likelihood_threshold_analysis_median_adjusted_mutual_score_cutoff_for_all_week_stages.csv', index_col=0)
+all_info_cutoff = pd.read_csv(output+'/GSE155121_NSCs_ccAFv2_likelihood_threshold_analysis.csv', index_col=0)
 
 #----------------
 # Load data
 #----------------
+nfolds = 10
 datasets = {}
 for tag1 in tags:
     for ws1 in ws:
         print('\nLoading '+tag1+' '+ws1+' data...')
         if tag1 == 'GSE155121':
-            resdir7 = resdir+'/'+tag1+'/NSC'
-            datasets[tag1] = sc.read_h5ad(resdir+'/GSE155121/NSC/'+ws1+'_normalized_ensembl_test2.h5ad')
-            print(datasets[tag1].shape)
+            resdir2 = resdir+'/'+tag1+'/NSC'
+            datasets[tag1] = sc.read_h5ad(resdir2+'/'+ws1+'_normalized_ensembl.h5ad')
             datasets[tag1].obs['new_clusters'] = datasets[tag1].obs['ccAFv2']
         datasets[tag1].obs['dataset'] = tag1
         datasets[tag1].obs['week_stage'] = ws1
@@ -222,10 +225,6 @@ for tag1 in tags:
         ccAF1_scanpy = datasets[tag1]
         # Initialize helper vars/indices for subsetting genes
         nCells = ccAF1_scanpy.shape[0]
-        # Make folder to store downstream results
-        resdir9 = resdir5+'/GSE155121/matched_cell_perc_analysis'
-        if not os.path.exists(resdir9):
-            os.makedirs(resdir9)
         # Cross validation within dataset
         ccseurat_labs = ccAF1_scanpy.obs['Phase']
         truelabs = ccAF1_scanpy.obs['new_clusters']
@@ -251,7 +250,7 @@ for tag1 in tags:
             DF = pd.concat([col1, col2, col3], axis=1)
             # Save out data
             print('\nSaving out CV sensitivity analysis file...')
-            DF.to_csv(resdir9+'/'+ws1+'_ccAFv2_CV_matched_'+str(cell_perc1)+'_perc_analysis_030924.csv')
+            DF.to_csv(savedir+'/'+ws1+'_ccAFv2_CV_matched_'+str(cell_perc1)+'_perc_analysis.csv')
 
 #------------------------
 # Downstream analysis
@@ -259,7 +258,6 @@ for tag1 in tags:
 input = {}
 results = {}
 cells_predicted = {}
-resdir9 = resdir5+'/GSE155121/matched_cell_perc_analysis'
 for tag1 in tags:
     input[tag1] = {}
     results[tag1] = {}
@@ -275,7 +273,7 @@ for tag1 in tags:
             print('\n' +str(cell_perc1))
             results[tag1][ws1][cell_perc1] = []
             cells_predicted[tag1][ws1][cell_perc1] = []
-            input[tag1][ws1][cell_perc1] = pd.read_csv(resdir9+'/'+ws1+'_ccAFv2_CV_matched_'+str(cell_perc1)+'_perc_analysis_030924.csv', low_memory=False)
+            input[tag1][ws1][cell_perc1] = pd.read_csv(savedir+'/'+ws1+'_ccAFv2_CV_matched_'+str(cell_perc1)+'_perc_analysis.csv', low_memory=False)
             numSamples = len(input[tag1][ws1][cell_perc1])/nfolds
             truelabs = input[tag1][ws1][cell_perc1]['ccSeurat']
             # Separate by nfolds so can get variance
@@ -316,7 +314,7 @@ for tag1 in tags:
     col5 = [item for sublist in col5 for item in sublist]
     df2 = pd.DataFrame([col1, col2, col3, col4, col5]).T
     df2.rename(columns={0:'adjusted_mutual_score', 1:'cells_predicted', 2:'k', 3:'percent_cells', 4:'week_stage'}, inplace=True)
-    df2.to_csv(resdir9+'/GSE155121_matched_percent_cells_for_each_week_stage_GSE155121_NSCs_030924.csv')
+    df2.to_csv(savedir+'/GSE155121_NSCs_matched_percent_cells_for_each_week_stage.csv')
     median1 = {}
     median_cutoff = {}
     ttest = {}
@@ -324,11 +322,6 @@ for tag1 in tags:
     compare_box_plot_comp = {}
     compare_box_plot_ref = {}
     for ws1 in ws:
-        sns.set(style="whitegrid", font_scale=3)
-        fig, ax1 = plt.subplots(figsize=(40,20))
-        sns.boxplot(y = "adjusted_mutual_score", x = "percent_cells", data = df2[df2['week_stage'] == ws1], ax = ax1, palette = "husl")
-        ax1.set(ylabel="adjusted_mutual_info_score")
-        plt.savefig(resdir9+'/'+ws1+'_matched_percent_cells_adjusted_mutual_score_030924.pdf')
         # Find medians for both cutoff analysis and random cell loss analysis
         median1[ws1] = {}
         median_cutoff[ws1] = {}
@@ -351,15 +344,15 @@ for tag1 in tags:
             compare_box_plot_ref[ws1][cutoff_val] = list(ref.values)
     # Save out ttest statistics
     df3 = pd.DataFrame(matched_cutoff_ttest)
-    df3.to_csv(resdir9+'/GSE155121_adjusted_mutual_info_score_ttest_values_between_unknown_cutoff_and_matched_random_cells_dropped_030924.csv')
+    df3.to_csv(savedir+'/GSE155121_NSC_adjusted_mutual_info_score_ttest_values_between_unknown_cutoff_and_matched_random_cells_dropped.csv')
     df3_corrected = {}
     for ws1 in ws:
         df3_corrected[ws1] = statsmodels.stats.multitest.fdrcorrection(df3[ws1])[1]
     df4 = pd.DataFrame(df3_corrected)
     df4.index = df3.index
-    df4.to_csv(resdir9+'/GSE155121_adjusted_mutual_info_score_fdr_corrected_ttest_values_between_unknown_cutoff_and_matched_random_cells_dropped_030924.csv')
+    df4.to_csv(savedir+'/GSE155121_NSC_adjusted_mutual_info_score_fdr_corrected_ttest_values_between_unknown_cutoff_and_matched_random_cells_dropped.csv')
     # Plot all together in one PDF
-    with PdfPages(r'results/GSE155121/matched_cell_perc_analysis/GSE155121_dropout_matched_perc_cells_all_together_030924.pdf') as export_pdf:
+    with PdfPages(r'results/matched_cell_perc_analysis/GSE155121_NSC_dropout_matched_perc_cells_all_together.pdf') as export_pdf:
         for ws1 in ws:
             tmp1 = pd.DataFrame(compare_box_plot_comp[ws1]).melt()
             tmp1['week_stage'] = ws1
@@ -375,5 +368,5 @@ for tag1 in tags:
             ax1.set(ylabel="adjusted_mutual_info_score", xlabel = 'cutoff')
             ax1.set_title('GSE155121_'+ws1)
             #ax1.set_ylim(0,1)
-            plt.savefig(resdir9+'/GSE155121_likelihood_threshold_versus_random_cells_dropped_030924_'+ws1+'.pdf')
+            plt.savefig(savedir+'/GSE155121_likelihood_threshold_versus_random_cells_dropped_'+ws1+'.pdf')
             export_pdf.savefig(fig)
