@@ -48,8 +48,16 @@ g2m.genes <- cc.genes$g2m.genes
 ccSeurat_order = c("G1", "S", "G2M")
 ccSeurat_colors = c("G1"="#f37f73", "S"="#8571b2", "G2M"="#3db270")
 ccAFv2_order = c('Neural G0', 'G1', 'Late G1', 'S', 'S/G2', 'G2/M', 'M/Early G1')
-#ccAFv2_order = c('M/Early G1', 'G2/M', 'S/G2', 'S', 'Late G1', 'G1', 'Neural G0')
+ccAFv2_order_opp = c('M/Early G1', 'G2/M', 'S/G2', 'S', 'Late G1', 'G1', 'Neural G0')
 ccAFv2_colors = c("Neural G0" = "#d9a428", "G1" = "#f37f73", "Late G1" = "#1fb1a9",  "S" = "#8571b2", "S/G2" = "#db7092", "G2/M" = "#3db270" ,"M/Early G1" = "#6d90ca")
+
+# cyclins to plot
+features3 <- c("CCND1", "CCNE2", "CCNA2", "CCNB1")
+# convert to ensembl IDs
+ensembl_features3 = mapIds(org.Hs.eg.db, keys = features3, keytype = "SYMBOL", column="ENSEMBL", multiVals='first')
+ensembl_features3 = na.omit(data.frame(ensembl_features3))
+ensembl_features3_plot = ensembl_features3$ensembl_features3
+
 
 # Set up directory structure
 #setwd("files/")
@@ -134,23 +142,31 @@ for (ws1 in c('W3-1', 'W4-1', 'W4-2', 'W4-3', 'W5-1', 'W5-2', 'W5-3', 'W6-1', 'W
   resdir3 = file.path(resdir2, ws1)
   resdir4 = file.path(resdir3, 'analysis_output')
   resdir5 = file.path(resdir3, 'seurat_objects')
-  tmp = readRDS(file.path(resdir5, paste0(ws1, '_normalized_ensembl.rds')))
+  seurat2 = readRDS(file.path(resdir5, paste0(ws1, '_normalized_ensembl.rds')))
   # Order  ccSeurat calls
-  sub1 = ccSeurat_order %in% factor(tmp$Phase)
-  tmp$Phase <- factor(tmp$Phase, levels = ccSeurat_order[sub1])
-  df1 = data.frame(table(tmp$Phase))
+  sub1 = ccSeurat_order %in% factor(seurat2$Phase)
+  seurat2$Phase <- factor(seurat2$Phase, levels = ccSeurat_order[sub1])
+  df1 = data.frame(table(seurat2$Phase))
   rownames(df1) = df1$Var1
-  df2 = df1['Freq']/dim(tmp)[2]
+  df2 = df1['Freq']/dim(seurat2)[2]
   df2$Phase = rownames(df2)
   datas_ccSeurat[[ws1]] = df2
   # Order ccAFv2 calls
-  sub2 = ccAFv2_order %in% factor(tmp$ccAFv2)
-  tmp$ccAFv2 <- factor(tmp$ccAFv2, levels = ccAFv2_order[sub2])
-  df3 = data.frame(table(tmp$ccAFv2))
+  sub2 = ccAFv2_order %in% factor(seurat2$ccAFv2)
+  seurat2$ccAFv2 <- factor(seurat2$ccAFv2, levels = ccAFv2_order[sub2])
+  df3 = data.frame(table(seurat2$ccAFv2))
   rownames(df3) = df3$Var1
-  df4 = df3['Freq']/dim(tmp)[2]
+  df4 = df3['Freq']/dim(seurat2)[2]
   df4$ccAFv2 = rownames(df4)
   datas_ccAFv2[[ws1]] = df4
+  # Plot cyclin ridge plots
+  seurat_subset = subset(seurat2, subset=ccAFv2 !='Unknown')
+  # Order ccAFv2 calls in the opposite way
+  sub3 = ccAFv2_order_opp %in% factor(seurat_subset$ccAFv2)
+  seurat_subset$ccAFv2 <- factor(seurat_subset$ccAFv2, levels = ccAFv2_order_opp[sub3])
+  pdf(file.path(resdir4, paste0(ws1, '_cyclin_ridge_plot.pdf')), height = 3, width = 15)
+  print(RidgePlot(seurat_subset, features = ensembl_features3_plot, ncol=4, group.by = 'ccAFv2', cols = ccAFv2_colors[sub3]))
+  dev.off()
 }
 
 # ccSeurat pie plots
