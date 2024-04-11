@@ -85,7 +85,6 @@ _classes = list(pd.read_csv('ccAFv2_classes.txt', header=None)[0])
 ## Functions ##
 ###############
 
-
 def _scale(data):
     """
     Standardize or normalize numeric data using scikit-learn's StandardScaler.
