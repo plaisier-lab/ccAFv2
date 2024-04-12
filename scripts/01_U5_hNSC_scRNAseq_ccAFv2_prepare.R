@@ -151,11 +151,18 @@ saveRDS(seurat1, file.path(resdir3, paste0(tag, "_filtered_ensembl.rds")))
 # Normalization / Downstream analysis
 #---------------------------------------
 
+#seurat1 = readRDS(file.path(resdir3, paste0(tag, "_filtered_ensembl.rds")))
+
 # Save as new object so can go back to previous non-normalized seurat obj if need to
 seurat2 <- seurat1
 
 # Normalize with SCTransform
 seurat2 <- SCTransform(seurat2, verbose = FALSE)
+#seurat2 <- SCTransform(seurat2, verbose = FALSE, return.only.var.genes = FALSE)
+#saveRDS(seurat2, file.path(resdir3, paste0(tag, "_normalized_ensembl_all_genes.rds")))
+#SaveH5Seurat(seurat2, overwrite = TRUE, file.path(resdir3, paste0(tag, "_normalized_ensembl.h5Seurat")))
+#Convert(file.path(resdir3, paste0(tag, "_normalized_ensembl.h5Seurat")), overwrite = TRUE, dest = "h5ad")
+
 
 # Downstream analysis
 seurat2 <- RunPCA(seurat2, verbose = FALSE)
@@ -164,9 +171,9 @@ seurat2 <- RunUMAP(seurat2, dims=1:10, verbose = FALSE)
 
 # Save out normalized object as rds, h5ad, and loom
 saveRDS(seurat2, file.path(resdir3, paste0(tag, "_normalized_ensembl.rds")))
-#SaveH5Seurat(seurat2, overwrite = TRUE, file.path(resdir4, paste0(tag, "_normalized_ensembl.h5Seurat")))
+#SaveH5Seurat(seurat2, overwrite = TRUE, file.path(resdir3, paste0(tag, "_normalized_ensembl.h5Seurat")))
 #Convert(file.path(resdir3, paste0(tag, "_normalized_ensembl.h5Seurat")), overwrite = TRUE, dest = "h5ad")
-#data_loom <- as.loom(seurat3, file.path(resdir4, paste0(tag, "_normalized_ensembl.loom")), verbose = FALSE, overwrite = TRUE)
+#data_loom <- as.loom(seurat3, file.path(resdir3, paste0(tag, "_normalized_ensembl.loom")), verbose = FALSE, overwrite = TRUE)
 #data_loom$close_all()
 
 
