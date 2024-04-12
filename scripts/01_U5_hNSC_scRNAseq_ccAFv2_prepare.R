@@ -160,8 +160,8 @@ seurat2 <- seurat1
 seurat2 <- SCTransform(seurat2, verbose = FALSE)
 #seurat2 <- SCTransform(seurat2, verbose = FALSE, return.only.var.genes = FALSE)
 #saveRDS(seurat2, file.path(resdir3, paste0(tag, "_normalized_ensembl_all_genes.rds")))
-#SaveH5Seurat(seurat2, overwrite = TRUE, file.path(resdir3, paste0(tag, "_normalized_ensembl.h5Seurat")))
-#Convert(file.path(resdir3, paste0(tag, "_normalized_ensembl.h5Seurat")), overwrite = TRUE, dest = "h5ad")
+#SaveH5Seurat(seurat2, overwrite = TRUE, file.path(resdir3, paste0(tag, "_normalized_ensembl_all_genes.h5Seurat")))
+#Convert(file.path(resdir3, paste0(tag, "_normalized_ensembl_all_genes.h5Seurat")), overwrite = TRUE, dest = "h5ad")
 
 
 # Downstream analysis
