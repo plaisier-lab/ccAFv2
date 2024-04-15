@@ -599,6 +599,7 @@ datas_nucs[['GW23_S']] = snProcessData(week1 = 'GW23', location1 = 'Spinal_Whole
 tag = 'GSE155121'
 resdir2 = file.path(resdir1, tag, 'GW4')
 savedir = file.path(output, tag)
+dir.create(savedir, showWarnings = FALSE)
 
 # Load data
 data <- LoadH5Seurat(file.path(resdir2, 'gw4_all.h5seurat'))
@@ -638,7 +639,7 @@ cat('\n  Filtered to', dim(seurat1)[2], 'cells', dim(seurat1)[1], 'genes \n')
 
 # Apply ccAFv2
 seurat1 = PredictCellCycle(seurat1, gene_id='symbol')
-write.csv(seurat1$ccAFv2, file.path('GW4_all_ccAFv2_calls.csv'))
+write.csv(seurat1$ccAFv2, file.path(savedir, 'GW4_all_ccAFv2_calls.csv'))
 
 # Apply ccSeurat
 s.genes <- cc.genes$s.genes
@@ -662,7 +663,7 @@ for(i in c(1:length(unique(seurat1$week_stage)))){
 colnames(cf_1) = colnames(cf)
 rownames(cf_1) = rownames(cnewdf)[1:7]
 sub1 = rownames(data.frame(ccAFv2_colors)) %in% rownames(cf_1)
-pdf(paste0('GW4_all_ccAFv2_percentages_020624.pdf'))
+pdf(file.path(savedir, 'GW4_all_ccAFv2_percentages.pdf'))
 par(mar = c(8, 8, 8, 8) + 2.0)
 barplot(cf_1, xlab = "", ylab = "Cell Percentage", las=2, legend.text = rownames(cf_1),  col = ccAFv2_colors[sub1], args.legend=list(x=ncol(cf_1) + 15, y=max(colSums(cf_1)), bty = "n"))
 dev.off()
