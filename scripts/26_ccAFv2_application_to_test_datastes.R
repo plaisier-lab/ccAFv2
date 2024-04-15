@@ -18,7 +18,7 @@
 ##########################################################
 
 ### Docker command to start-up Seurat capable analysis container
-# docker run -it -v '/home/soconnor/old_home/ccNN/ccAFv2:/files' cplaisier/ccafv2_extra
+#docker run -it -v '/home/soconnor/old_home/ccNN/ccAFv2:/files' cplaisier/ccafv2_extra
 
 ### Packages required to run analyses
 library(dplyr)
@@ -59,6 +59,7 @@ ccSeurat_order = c('G1', 'S', 'G2M')
 
 tag = 'Nowakowski'
 savedir = file.path(output, tag)
+dir.create(savedir, showWarnings = FALSE)
 
 # Load up count data and start Seurat
 d1 = read.table(gzfile(file.path(resdir, tag, 'exprMatrix.tsv.gz')),sep='\t',row.names=1,header=T)
@@ -72,7 +73,7 @@ Nowakowski_2017 = CreateSeuratObject(counts=d1, min.cells = 3, min.features = 20
 dim(Nowakowski_2017) #[1] 41222  4261
 
 # Load meta-data
-meta = read.table('meta.tsv', header=T, row.names=1, sep='\t', as.is=T)
+meta = read.table(file.path(resdir, tag, 'meta.tsv'), header=T, row.names=1, sep='\t', as.is=T)
 meta[is.na(meta)] = 'none'
 
 # Make a cell type conversion list
@@ -132,11 +133,16 @@ for(pheno1 in colnames(meta)) {
     Nowakowski_2017[[pheno1]] = meta[,pheno1]
 }
 
+# Read in ccAF calls
+#ccAF_calls = read.csv(file.path(resdir, tag, 'Nowakowski_ccAF_calls.csv'), row.names = 'Cell.ID')
+#Nowakowski_2017$ccAF = ccAF_calls$ccAF
+
 # Classify with ccAFv2
 seurat1 = Nowakowski_2017
 seurat1 = PredictCellCycle(seurat1, assay = 'RNA', gene_id = 'symbol')
 # Save out calls and rds object
 write.csv(seurat1$ccAFv2, file.path(savedir, 'Nowakowski_ccAFv2_calls.csv'))
+#write.csv(seurat1@meta.data, file.path(savedir, 'Nowakowski_metadata.csv'))
 write.csv(table(seurat1$ccAFv2, seurat1$WGCNAcluster_restricted), file.path(savedir, 'Nowakowski_ccAFv2_calls_by_cell_type.csv'))
 saveRDS(seurat1, file.path(savedir, 'Nowakowski_2017_with_ccAFv2_calls.rds'))
 
@@ -175,6 +181,7 @@ dev.off()
 
 tag = 'GSE67833'
 savedir = file.path(output, tag)
+dir.create(savedir, showWarnings = FALSE)
 
 # Read in data
 exp_mat = read.csv(file.path(resdir, tag, 'GSE67833_Gene_expression_matrix.csv'),header=T,row.names=1)
@@ -236,6 +243,7 @@ dev.off()
 
 tag = 'PRJNA324289'
 savedir = file.path(output, tag)
+dir.create(savedir, showWarnings = FALSE)
 
 # Load in data
 d1 = read.csv(file.path(resdir, tag, 'Counts_AllLiveSingleCells_IN_VIVO_ONLY.csv'),header=T,row.names=1)
@@ -285,7 +293,7 @@ dev.off()
 
 tag = 'GSE165555'
 savedir = file.path(output, tag)
-dir.create(savedir)
+dir.create(savedir, showWarnings = FALSE)
 
 # Load scRNA-seq data
 data <- readRDS(file.path(resdir, tag, 'GSM5039270_scSeq.rds'))
@@ -415,7 +423,7 @@ scProcessData = function(week1, location1, type1 = 'Cells', v1 = 3000, v2 = 5000
   df1 = df1[df1$Freq != 0,]
   rownames(df1) = df1$Var1
   sub1 = rownames(data.frame(ccAFv2_colors)) %in% df1$Var1
-  write.csv(data.frame(((df1['Freq']/dim(seurat2)[2])*100)), file.path(savedir, paste0(week1,'_',location1,'_',type1, '_ccAFv2_call_frequency.csv')))
+  write.csv(data.frame(((df1['Freq']/dim(seurat2)[2])*100)), file.path(savedir, paste0(week1,'_',type1, '_', location1, '_ccAFv2_call_frequency.csv')))
   s.genes <- cc.genes$s.genes
   g2m.genes <- cc.genes$g2m.genes
   seurat2 = CellCycleScoring(seurat2, s.genes, g2m.genes, set.ident=FALSE)
@@ -431,7 +439,7 @@ scProcessData = function(week1, location1, type1 = 'Cells', v1 = 3000, v2 = 5000
   d1 = DimPlot(seurat2, reduction = "umap", label=F, group.by="seurat_clusters") + ggtitle("seurat_clusters")
   d2 = DimPlot(seurat2, reduction = "umap", label=F, group.by="Phase", cols = ccSeurat_colors) + ggtitle("Phase")
   d3 = DimPlot(seurat2, reduction = "umap", label=F, group.by="ccAFv2", cols = ccAFv2_colors[sub1]) + ggtitle("ccAFv2")
-  pdf(file.path(paste0(savedir, '/', week1, '_',type1,'.pdf')), height = 8, width = 10)
+  pdf(file.path(paste0(savedir, '/', week1, '_',type1,'_',location1,'.pdf')), height = 8, width = 10)
   lst = list(d1, d2, d3)
   grid.arrange(grobs = lst, layout_matrix = rbind(c(1, 2), c(3, NA)), top = "")
   #--- ccAFv2 stacked barplot ---#
@@ -515,7 +523,7 @@ snProcessData = function(week1, location1, type1 = 'Nuc', v1 = 200, v2 = 15000, 
   df1 = df1[df1$Freq != 0,]
   rownames(df1) = df1$Var1
   sub1 = rownames(data.frame(ccAFv2_colors)) %in% df1$Var1
-  write.csv(data.frame(((df1['Freq']/dim(seurat2)[2])*100)), file.path(savedir, paste0(week1,'_',type1, '_ccAFv2_call_frequency.csv')))
+  write.csv(data.frame(((df1['Freq']/dim(seurat2)[2])*100)), file.path(savedir, paste0(week1,'_',type1,'_',location1, '_ccAFv2_call_frequency.csv')))
   s.genes <- cc.genes$s.genes
   g2m.genes <- cc.genes$g2m.genes
   seurat2 = CellCycleScoring(seurat2, s.genes, g2m.genes, set.ident=FALSE)
@@ -531,7 +539,7 @@ snProcessData = function(week1, location1, type1 = 'Nuc', v1 = 200, v2 = 15000, 
   d1 = DimPlot(seurat2, reduction = "umap", label=F, group.by="seurat_clusters") + ggtitle("seurat_clusters")
   d2 = DimPlot(seurat2, reduction = "umap", label=F, group.by="Phase", cols = ccSeurat_colors) + ggtitle("Phase")
   d3 = DimPlot(seurat2, reduction = "umap", label=F, group.by="ccAFv2", cols = ccAFv2_colors[sub1]) + ggtitle("ccAFv2")
-  pdf(file.path(paste0(savedir, '/', week1, '_',type1,'.pdf')), height = 8, width = 10)
+  pdf(file.path(paste0(savedir, '/', week1, '_',type1,'_',location1,'.pdf')), height = 8, width = 10)
   lst = list(d1, d2, d3)
   grid.arrange(grobs = lst, layout_matrix = rbind(c(1, 2), c(3, NA)), top = "")
   #--- ccAFv2 stacked barplot ---#
