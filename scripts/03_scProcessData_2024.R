@@ -63,8 +63,8 @@ ensembl_features2_plot = ensembl_features2$ensembl_features2
 features3 <- c("CCND1", "CCNE2", "CCNA2", "CCNB1", "CDK1", "CDK2")
 # convert to ensembl IDs
 ensembl_features3 = mapIds(org.Hs.eg.db, keys = features3, keytype = "SYMBOL", column="ENSEMBL", multiVals='first')
-#ensembl_features3 = na.omit(data.frame(ensembl_features3))
-#ensembl_features3_plot = ensembl_features3$ensembl_features3
+ensembl_features3 = na.omit(data.frame(ensembl_features3))
+ensembl_features3_plot = ensembl_features3$ensembl_features3
 
 # Plotting order & colors
 ccSeurat_order = c("G1", "S", "G2M")
@@ -83,7 +83,6 @@ scProcessData = function(res_dir, tag, cutoff = 0.5, assay = 'SCT', do_sctransfo
   # Load filtered / normalized data
   #---------------------------
   gene_id = 'ensembl'
-  #seurat2 = readRDS(file.path(resdir3, paste0(tag, '_filtered_', paste0(gene_id),'.rds')))
   seurat2 = readRDS(file.path(resdir3, paste0(tag, '_normalized_', paste0(gene_id),'.rds')))
   cat('\n', dim(seurat2), '\n')
   # Load ccSeurat calls
@@ -216,12 +215,12 @@ scProcessData = function(res_dir, tag, cutoff = 0.5, assay = 'SCT', do_sctransfo
   print(RidgePlot(seurat2, features = ensembl_features3_plot, ncol=2, cols = ccAFv2_colors[sub4]))
   dev.off()
   # Change factored metadata to characters
-  seurat2$ccAFv2 = as.character(seurat2$ccAFv2)
-  seurat2$Phase = as.character(seurat2$Phase)
-  cat('saving processed data as loom and rds...\n')
+  #seurat2$ccAFv2 = as.character(seurat2$ccAFv2)
+  #seurat2$Phase = as.character(seurat2$Phase)
+  #cat('saving processed data as loom and rds...\n')
   #data_loom_2 <- as.loom(seurat2, file.path(resdir3, paste0(tag, '_processed.loom')), verbose = FALSE, overwrite = TRUE)
   #data_loom_2$close_all()
-  saveRDS(seurat2, file.path(resdir3, paste0(tag, '_processed.rds')))
+  #saveRDS(seurat2, file.path(resdir3, paste0(tag, '_processed.rds')))
   return(seurat2)
 }
 
