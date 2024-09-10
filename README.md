@@ -18,3 +18,13 @@ def __init__(self,
              model_specs = [200,100],
              model_name = calendar.timegm(time.gmtime()))
 ```
+
+- **training_sets**: a dictionary of training scRNA-seq Scanpy objects, no default
+- **label_sets**: a dictionary of training scRNA-seq cell label lists, no default
+- **variable_genes**: number of genes to include in classifier, default is 1000 (after filtering may be fewer)
+- **epochs**: number of training epochs, default is 10
+- **validation_split**: what fraction of cells should be set aside for validation, defaults to 0.2
+- **activation**: activation function type for artificial neurons, defaults to 'relu'
+- **dropout_rate**: rate to use for dropout nodes between layers to avoid overfitting, defaults to 0.4
+- **model_specs**: size of the layers of the network, defaults to [200,100] (for ccAFv2 we used [600,200])
+- **model_name**: adds the calendar time to the outputs for the classifier, default date and time
