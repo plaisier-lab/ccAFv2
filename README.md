@@ -3,7 +3,7 @@ This github repository contains all the codes used to construct the ccAFv2 class
 
 # Building the ccAFv2 classifier
 The construction of the ccAFv2 classifier takes place in the file:  [04_building_ccAFv2.py](https://github.com/plaisier-lab/ccAFv2/blob/main/scripts/04_building_ccAFv2.py)
-This script contains the ANN model for ccAFv2, which can be repurposed to build classifiers to predict cell types in other classifiers by exchanging the U5-hNSC scRNA-seq data and labels with new data and labels. The classifier_ccAFv2 class can take in any dataset, and provides parameters to adjust the construction of the classifier:
+This script contains the ANN model for ccAFv2, which can be repurposed to build classifiers to predict cell types in other classifiers by exchanging the U5-hNSC scRNA-seq data and labels with new data and labels. The classifier_ccAFv2 class can take in any dataset, and provides parameters to adjust the construction of the classifier. It does this by taking those parameters in through it's init funciton:
 
 ```python
 def __init__(self,
@@ -28,3 +28,5 @@ def __init__(self,
 - **dropout_rate**: rate to use for dropout nodes between layers to avoid overfitting, defaults to 0.4
 - **model_specs**: size of the layers of the network, defaults to [200,100] (for ccAFv2 we used [600,200])
 - **model_name**: adds the calendar time to the outputs for the classifier, default date and time
+
+The script details how to import the data, initialize, and construct a classifier. We also offer all the other scripts needed to test the classifier and demonstrate its utility.
