@@ -43,8 +43,8 @@ from clusim.clustering import Clustering, print_clustering
 import clusim.sim as sim
 
 # Custom classes for classification
-import classifiersV3 as cl
-#import classifiersV6clp as cl
+#import classifiersV3 as cl
+import classifiersV6clp as cl
 
 # Plotting
 import matplotlib.pyplot as plt

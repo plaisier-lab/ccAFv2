@@ -312,44 +312,145 @@ ccSeurat_calls['x'].replace({'G2M': 'G2/M'}, inplace=True)
 extra_col = list(ccSeurat_calls['x'])*10
 cutoffs = [0.5]
 percs = [0.99, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1]
-input = {}
-results = {}
-f1 = {}
-cells_predicted = {}
-error_rate = {}
-for cutoff1 in cutoffs:
-    file1 = pd.read_csv(savedir+'/'+set1+'_ccAFv2_CV_missing_genes_'+str(cutoff1)+'.csv')
-    file1['ccSeurat'] = extra_col
-    input[cutoff1] = file1
-    numSamples = len(input[cutoff1])/nfolds
-    results[cutoff1] = {}
-    f1[cutoff1] = {}
-    cells_predicted[cutoff1] = {}
-    error_rate[cutoff1] = {}
-    for perc1 in percs:
-        results[cutoff1][perc1] = []
-        defined_cell_states = input[cutoff1]['True Labels']
-        truelabs = input[cutoff1]['ccSeurat']
-        cells_predicted[cutoff1][perc1] = []
-        error_rate[cutoff1][perc1] = []
-        f1[cutoff1][perc1] = []
-        for k in range(nfolds):
-            bind = int(numSamples*k)
-            eind = int(numSamples*(k+1))
-            defined_cell_state = defined_cell_states.iloc[bind:eind]
-            #truelab = truelabs.iloc[bind:eind] # seurat labels
-            truelab = defined_cell_states.iloc[bind:eind] # ccAF labels
-            predlab = input[cutoff1][str(perc1)].iloc[bind:eind]
-            # Change 'Unknown' to NaN so can drop those out
-            predlab.replace('Unknown', np.nan, inplace=True)
-            # Adjusted mutual score; drop unknowns
-            results[cutoff1][perc1].append(adjusted_mutual_info_score(truelab[predlab.dropna().index], predlab.dropna()))
-            # Cells predicted
-            cells_predicted[cutoff1][perc1].append(1 - sum(predlab.isna())/len(predlab))
-            # Error Rate
-            error_rate[cutoff1][perc1].append(1-sum(defined_cell_state[predlab.dropna().index] == predlab.dropna())/len(defined_cell_state[predlab.dropna().index])) if len(defined_cell_state[predlab.dropna().index]) != 0 else error_rate[cutoff1][perc1].append(0)
-            # F1 score
-            f1[cutoff1][perc1].append(classification_report(truelab[predlab.dropna().index], predlab.dropna(), output_dict=True, zero_division=0))
+results = []
+for sub1 in ['Neural G0', 'G1', 'Late G1', 'S', 'S/G2', 'G2/M', 'M/Early G1']:
+    input = {}
+    #f1 = {}
+    #cells_predicted = {}
+    #error_rate = {}
+    for cutoff1 in cutoffs:
+        file1 = pd.read_csv(savedir+'/'+set1+'_ccAFv2_CV_missing_genes_analysis_'+str(cutoff1)+'.csv', index_col = 0)
+        file1['ccSeurat'] = extra_col
+        input[cutoff1] = file1.loc[file1['True Labels'] == sub1]
+        numSamples = len(input[cutoff1])/nfolds
+        #results[cutoff1] = {}
+        #f1[cutoff1] = {}
+        #cells_predicted[cutoff1] = {}
+        #error_rate[cutoff1] = {}
+        for perc1 in percs:
+            #results[cutoff1][perc1] = []
+            defined_cell_states = input[cutoff1]['True Labels']
+            truelabs = input[cutoff1]['ccSeurat']
+            #cells_predicted[cutoff1][perc1] = []
+            #error_rate[cutoff1][perc1] = []
+            #f1[cutoff1][perc1] = []
+            for k in range(nfolds):
+                tmp_data = {}
+                tmp_data['sub'] = sub1
+                tmp_data['cutoff'] = cutoff1
+                tmp_data['percentage_genes'] = perc1
+                tmp_data['k'] = k
+                bind = int(numSamples*k)
+                eind = int(numSamples*(k+1))
+                defined_cell_state = defined_cell_states.iloc[bind:eind]
+                #truelab = truelabs.iloc[bind:eind] # seurat labels
+                truelab = defined_cell_states.iloc[bind:eind] # ccAF labels
+                predlab = input[cutoff1][str(perc1)].iloc[bind:eind]
+                # Change 'Unknown' to NaN so can drop those out
+                predlab.replace('Unknown', np.nan, inplace=True)
+                # Adjusted mutual score; drop unknowns
+                tmp_data['adjusted_mutual_score'] = adjusted_mutual_info_score(truelab[predlab.dropna().index], predlab.dropna())
+                # Cells predicted
+                tmp_data['cells_predicted'] = 1 - sum(predlab.isna())/len(predlab)
+                # Error Rate
+                if len(defined_cell_state[predlab.dropna().index]) != 0:
+                    tmp_data['error_rate'] = 1-sum(defined_cell_state[predlab.dropna().index] == predlab.dropna())/len(defined_cell_state[predlab.dropna().index])
+                else:
+                    error_rate[cutoff1][perc1].append(0)
+                # F1 score
+                #tmp_data['f1'] = classification_report(truelab[predlab.dropna().index], predlab.dropna(), output_dict=True, zero_division=0)
+                results.append(tmp_data)
+
+df = pd.DataFrame(results)
+df.to_csv(savedir+'/'+set1+'_by_class_percentage_genes_remove_unknowns_error_rate.csv')
+
+#df = pd.read_csv(savedir+'/'+set1+'_by_class_percentage_genes_remove_unknowns_error_rate.csv', index_col = 0)
+# Together plots
+sns.set(style="whitegrid", font_scale=3)
+fig, ax1 = plt.subplots(figsize=(40,20))
+palette1 = ["#d9a428", "#f37f73", "#1fb1a9", "#8571b2", "#db7092", "#3db270", "#6d90ca"]
+#sns.boxplot(data = df, hue = "sub", y = "error_rate", x = "percentage_genes", ax = ax1, palette = palette1)
+sns.boxplot(data = df, hue = "sub", y = "cells_predicted", x = "percentage_genes", ax = ax1, palette = palette1)
+sns.move_legend(ax1, "best", bbox_to_anchor=(1,1), ncol=1)
+#ax1.set(ylabel="sub")
+plt.savefig(savedir+'/'+set1+'_by_class_percentage_genes_boxplot_together_remove_unknowns_cells_predicted.pdf')
+plt.clf()
+
+
+# Find metric medians
+median_er = {}
+median_cp = {}
+median_ami = {}
+for perc1 in percs:
+    median_er[perc1] = np.median(df2[df2['percentage_genes'] == perc1]['error_rate'])
+    median_cp[perc1] = np.median(df2[df2['percentage_genes'] == perc1]['cells_predicted'])*100
+    median_ami[perc1] = np.median(df2[df2['percentage_genes'] == perc1]['adjusted_mutual_score'])
+
+
+df3 = pd.DataFrame(
+    {'error_rate': list(median_er.values()),
+     'cells_predicted': list(median_cp.values()),
+     'ami': list(median_ami.values())
+    })
+df3.index = percs
+df3.to_csv(savedir+'/U5_all_metrics_percentage_genes_sensitivity_medians_'+str(cutoff1)+'.csv')
+
+
+
+
+
+
+
+
+
+# old
+
+# Read in data for plotting
+ccSeurat_calls = pd.read_csv(resdir+'/'+set1+'_ccSeurat_calls.csv')
+ccSeurat_calls['x'].replace({'G2M': 'G2/M'}, inplace=True)
+extra_col = list(ccSeurat_calls['x'])*10
+cutoffs = [0.5]
+percs = [0.99, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1]
+for sub1 in ['Neural G0', 'G1', 'Late G1', 'S', 'S/G2', 'G2/M', 'M/Early G1']:
+    input = {}
+    results = {}
+    #f1 = {}
+    #cells_predicted = {}
+    #error_rate = {}
+    for cutoff1 in cutoffs:
+        file1 = pd.read_csv(savedir+'/'+set1+'_ccAFv2_CV_missing_genes_'+str(cutoff1)+'.csv')
+        file1['ccSeurat'] = extra_col
+        input[cutoff1] = file1
+        numSamples = len(input[cutoff1])/nfolds
+        results[cutoff1] = {}
+        f1[cutoff1] = {}
+        cells_predicted[cutoff1] = {}
+        error_rate[cutoff1] = {}
+        for perc1 in percs:
+            results[cutoff1][perc1] = []
+            defined_cell_states = input[cutoff1]['True Labels']
+            truelabs = input[cutoff1]['ccSeurat']
+            cells_predicted[cutoff1][perc1] = []
+            error_rate[cutoff1][perc1] = []
+            f1[cutoff1][perc1] = []
+            for k in range(nfolds):
+                bind = int(numSamples*k)
+                eind = int(numSamples*(k+1))
+                defined_cell_state = defined_cell_states.iloc[bind:eind]
+                #truelab = truelabs.iloc[bind:eind] # seurat labels
+                truelab = defined_cell_states.iloc[bind:eind] # ccAF labels
+                predlab = input[cutoff1][str(perc1)].iloc[bind:eind]
+                # Change 'Unknown' to NaN so can drop those out
+                predlab.replace('Unknown', np.nan, inplace=True)
+                # Adjusted mutual score; drop unknowns
+                results[cutoff1][perc1].append(adjusted_mutual_info_score(truelab[predlab.dropna().index], predlab.dropna()))
+                # Cells predicted
+                cells_predicted[cutoff1][perc1].append(1 - sum(predlab.isna())/len(predlab))
+                # Error Rate
+                error_rate[cutoff1][perc1].append(1-sum(defined_cell_state[predlab.dropna().index] == predlab.dropna())/len(defined_cell_state[predlab.dropna().index])) if len(defined_cell_state[predlab.dropna().index]) != 0 else error_rate[cutoff1][perc1].append(0)
+                # F1 score
+                f1[cutoff1][perc1].append(classification_report(truelab[predlab.dropna().index], predlab.dropna(), output_dict=True, zero_division=0))
+
 col1 = []
 col2 = []
 col3 = []
@@ -376,31 +477,3 @@ col6 = [item for sublist in col6 for item in sublist]
 df2 = pd.DataFrame([col1, col2, col3, col4, col5, col6]).T
 df2.rename(columns={0:'adjusted_mutual_score', 1:'cells_predicted', 2:'error_rate', 3: 'k', 4: 'cutoff', 5:'percentage_genes'}, inplace=True)
 df2.to_csv(savedir+'/'+set1+'_percentage_genes_remove_unknowns_'+str(cutoff1)+'.csv')
-# Together plots
-sns.set(style="whitegrid", font_scale=3)
-fig, ax1 = plt.subplots(figsize=(40,20))
-df3 = df2.melt(id_vars = ['percentage_genes', 'k', 'cutoff'], var_name='metric', value_name='value')
-sns.boxplot(hue = "percentage_genes", y = "value", x = "metric", data = df3, ax = ax1, palette = "husl")
-sns.move_legend(ax1, "best", bbox_to_anchor=(1,1), ncol=1)
-ax1.set(ylabel="value")
-plt.savefig(savedir+'/'+set1+'_percentage_genes_boxplot_together_remove_unknowns_'+str(cutoff1)+'.pdf')
-plt.clf()
-
-
-# Find metric medians
-median_er = {}
-median_cp = {}
-median_ami = {}
-for perc1 in percs:
-    median_er[perc1] = np.median(df2[df2['percentage_genes'] == perc1]['error_rate'])
-    median_cp[perc1] = np.median(df2[df2['percentage_genes'] == perc1]['cells_predicted'])*100
-    median_ami[perc1] = np.median(df2[df2['percentage_genes'] == perc1]['adjusted_mutual_score'])
-
-
-df3 = pd.DataFrame(
-    {'error_rate': list(median_er.values()),
-     'cells_predicted': list(median_cp.values()),
-     'ami': list(median_ami.values())
-    })
-df3.index = percs
-df3.to_csv(savedir+'/U5_all_metrics_percentage_genes_sensitivity_medians_'+str(cutoff1)+'.csv')

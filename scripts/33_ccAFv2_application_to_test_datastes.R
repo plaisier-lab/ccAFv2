@@ -675,17 +675,52 @@ dev.off()
 
 setwd('/files')
 
-# Load in U5 ccAFv2 calls
-U5_ccAFv2 = read.csv('ccNN/U5_ccAFv2_calls_020224.csv', row.names = 'X')
-df = data.frame(table(U5_ccAFv2))
-df$total = (df$Freq/dim(U5_ccAFv2)[1])*100
+data1 = readRDS('ccAFv2/data/U5/U5_normalized_ensembl.rds')
+#ccAFv2_calls = read.csv('ccAFv2/data/U5/U5_ccAFv2_calls.csv', row.names = 'X')
+#data1$ccAFv2 = ccAFv2_calls$x
+data1 = PredictCellCycle(data1)
+
+
+
+df = data.frame(table(data1$ccAFv2))
+df$total = (df$Freq/dim(data1)[2])*100
 
 # Load in FUCCI U5 G1 ccAFv2 calls
-U5_G1_ccAFv2 = read.csv('ccNN/testData/U5/U5_G1/analysis_output/U5_G1_ccAFv2_calls.csv', row.names = 'X')
+U5_G1_ccAFv2 = read.csv('testData/U5/U5_G1/analysis_output/U5_G1_ccAFv2_calls.csv', row.names = 'X')
 df2 = data.frame(table(U5_G1_ccAFv2))
 df2$total = (df2$Freq/dim(U5_G1_ccAFv2)[1])*100
 
 # Calculate the fold change between ccAFv2 calls
 fc = df2$total/df$total
 log2fc = log2(fc)
-df3 = data.frame(df$x, log2fc)
+df3 = data.frame(df$Var1, log2fc)
+
+
+
+data1 = readRDS('testData/U5/U5_G1/seurat_objects/U5_G1_normalized_ensembl.rds')
+data1 = PredictCellCycle(data1, cutoff = 0.9)
+data2 = readRDS('testData/U5/U5_G1/seurat_objects/U5_G1_normalized_gene_symbols.rds')
+#data2 = PredictCellCycle(data2)
+
+df2 = data.frame(table(data2$ccAFv2))
+df2$total = (df2$Freq/dim(data2)[2])*100
+
+
+library(devtools)
+install_github("https://github.com/dkornai/QuieScore")
+library(QuieScore)
+
+# Prepare for QuieScore
+mat.expr = data.frame(data2[['RNA']]@data)
+processedData <- processInput(mat.expr, cancer_type = "LGG", gene_naming = "name", log_transformed=FALSE)
+#processedData <- processInput(mat.expr, cancer_type = "GBM", gene_naming = "name", log_transformed=FALSE)
+
+G0scores <- QuiescenceScore(processedData)
+G0scores$G0 <- ifelse(G0scores$q_score_raw>3, 'qG0', 'NA')
+#data2$G0 = G0scores$G0
+
+data1$G0 = G0scores$G0
+
+pdf('ccAFv2/data/U5/U5_G1_ccAFv2_ThresholdPlot.pdf')
+ThresholdPlot(data1)
+dev.off()

@@ -1,5 +1,5 @@
 ##########################################################
-## ccAFv2:  Plotting cell cycle classifiers U5          ##
+## ccAFv2:  Plotting cell cycle classifiers BT322       ##
 ##  ______     ______     __  __                        ##
 ## /\  __ \   /\  ___\   /\ \/\ \                       ##
 ## \ \  __ \  \ \___  \  \ \ \_\ \                      ##
@@ -48,10 +48,10 @@ recat_order = c('G1', 'G1S', 'S', 'G2', 'G2M', 'M')
 recat_colors = c("G1" = "#f37f73", "G1S" = "#1fb1a9", "S" = "#8571b2", "G2" = "#db7092", "G2M" = "#3db270", "M"= "#6d90ca")
 
 # Set directory structures
-tag = 'U5'
+tag = 'BT322'
 resdir = 'data'
 savedir = 'compare_classifiers'
-data_dir = file.path(resdir, tag)
+data_dir = file.path(resdir, 'GSC', tag)
 resdir2 = file.path(savedir, tag)
 
 # Load in data
@@ -64,25 +64,6 @@ for (class1 in classifiers){
   colnames(calls) = c('x')
   seurat2[[class1]] = calls$x
 }
-
-features <- c("CCND1")
-
-r1 = RidgePlot(tmp2, features, cols = c("#1fb1a9"))
-r2 = RidgePlot(tmp3, features, cols = c("#f37f73"))
-r3 = RidgePlot(tmp4, features, cols = c("#1fb1a9"))
-lst1 = list(r2, r1, r3)
-
-pdf('ccAFv2_Late_G1_ccAF_G1_cells.pdf', width = 16, height = 4)
-grid.arrange(grobs = lst1, layout_matrix = rbind(c(1,2, 3)), top = "")
-DotPlot(tmp2, features = c('CCND1'))
-DotPlot(tmp3, features = c('CCND1'))
-DotPlot(tmp4, features = c('CCND1', 'CCNE2'))
-dev.off()
-
-
-
-tmp3 = subset(seurat2, subset = ccafv2 == 'G1')
-tmp4 = subset(seurat2, subset = ccafv2 == 'Late G1')
 
 #--------------------------------
 # Organize states for each classifer

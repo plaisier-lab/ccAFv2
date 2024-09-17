@@ -35,18 +35,22 @@ from scipy import stats
 ##################
 
 data1 = 'U5'
-tags = ['SVMrej', 'RFpy', 'KNN', 'ACTINN','ccAFv2']
+tags = ['SVMrej', 'RFpy', 'KNN', 'ACTINN','ccAFv2', 'ccAFv2_eq_class']
 resdir = 'compare_classification_methods'
 toPlot = 'f1-score'
 
 ## Load datasets and concatenate
 cReport = {}
 for tag1 in tags:
-    resdir2 = resdir+'/'+tag1
-    datas = pd.read_csv(resdir2+'/'+tag1+'_CV_classification_report_861_'+data1+'.csv')
+    if tag1 == 'ccAFv2_eq_class':
+        datas = pd.read_csv('results/CV/ccAFv2/CV_classification_report_861_label_proportion_194.csv')
+        datas['Classifier'] = tag1
+    else:
+        resdir2 = resdir+'/'+tag1
+        datas = pd.read_csv(resdir2+'/'+tag1+'_CV_classification_report_861_'+data1+'.csv')
     cReport[tag1] = datas
 
-cReports = pd.concat([cReport[tags[0]], cReport[tags[1]], cReport[tags[2]], cReport[tags[3]], cReport[tags[4]]], axis = 0)
+cReports = pd.concat([cReport[tags[0]], cReport[tags[1]], cReport[tags[2]], cReport[tags[3]], cReport[tags[4]], cReport[tags[5]]], axis = 0)
 cReports.rename(columns={'Unnamed: 0':'Cell Cycle State'}, inplace=True)
 
 
@@ -65,7 +69,8 @@ fig, ax = plt.subplots(figsize=(40,20))
 sns.boxplot(hue="Classifier", y=toPlot, x = "Cell Cycle State", data=cReports, linewidth=1, order=['Neural G0', 'G1', 'Late G1', 'S', 'S/G2', 'G2/M', 'M/Early G1'])
 ax.set_ylim(0,1)
 ax.set(ylabel=toPlot)
-plt.savefig(resdir+'/'+data1+'_'+toPlot+'.pdf')
+#plt.savefig(resdir+'/'+data1+'_'+toPlot+'.pdf')
+plt.savefig(resdir+'/'+data1+'_'+toPlot+'_with_ccAFv2_eq_class.pdf')
 plt.clf()
 
 # stats

@@ -1,6 +1,6 @@
 ##########################################################
-## ccAFv2:  CV compare cell cycle classifiers on U5s    ##
-##          metrics and plotting                        ##
+## ccAFv2:  CV compare cell cycle classifiers on BT322  ##
+##          with Phase as ref metrics and plotting      ##
 ##  ______     ______     __  __                        ##
 ## /\  __ \   /\  ___\   /\ \/\ \                       ##
 ## \ \  __ \  \ \___  \  \ \ \_\ \                      ##
@@ -18,7 +18,7 @@
 ## mention who built it. Thanks. :-)                    ##
 ##########################################################
 
-# docker run -it -v '/home/soconnor/old_home/ccNN/ccAFv2:/files' cplaisier/ccnn
+#docker run -it -v '/home/soconnor/old_home/ccNN/ccAFv2:/files' cplaisier/ccnn
 
 # Imports
 import pandas as pd
@@ -41,49 +41,49 @@ from scipy import stats
 ##################
 
 ## Load datasets and concatenate
-data1 = 'U5'
-tags = ['ccaf', 'ccafv2', 'seurat', 'tricycle', 'recat', 'ccschwabe', 'peco', 'cyclone', 'seurat_ccafv2']
+data1 = 'PCW9'
+tags = ['ccafv2', 'tricycle', 'recat', 'ccschwabe', 'peco', 'cyclone', 'ccaf']
+#tags = ['ccafv2', 'tricycle', 'recat', 'ccschwabe', 'peco', 'ccaf']
 resdir = 'compare_classifiers'
 datasets = {}
 for tag1 in tags:
-    if tag1 == 'seurat_ccafv2':
-        datasets[tag1] = pd.read_csv(resdir+'/'+tag1+'/'+data1+'_CV_classification_report_with_Cell_Labels_as_ref.csv', index_col = 0)
-    else:
-        datasets[tag1] = pd.read_csv(resdir+'/'+data1+'/'+tag1+'_CV_classification_report_with_Cell_Labels_as_ref.csv', index_col = 0)
+    datasets[tag1] = pd.read_csv(resdir+'/'+tag1+'/'+data1+'_CV_classification_report_with_Phase_as_ref.csv', index_col = 0)
     datasets[tag1]['classifier'] = tag1
     datasets[tag1].rename(columns = {datasets[tag1][datasets[tag1].columns[0]].name: 'truelab'}, inplace=True)
     datasets[tag1].rename(columns = {datasets[tag1][datasets[tag1].columns[1]].name: 'predlab'}, inplace=True)
 
-df_all = pd.concat([datasets[tags[0]], datasets[tags[1]], datasets[tags[2]], datasets[tags[3]], datasets[tags[4]], datasets[tags[5]], datasets[tags[6]], datasets[tags[7]], datasets[tags[8]]], axis = 0)
+df_all = pd.concat([datasets[tags[0]], datasets[tags[1]], datasets[tags[2]], datasets[tags[3]], datasets[tags[4]], datasets[tags[5]], datasets[tags[6]]], axis = 0)
+#df_all = pd.concat([datasets[tags[0]], datasets[tags[1]], datasets[tags[2]], datasets[tags[3]], datasets[tags[4]], datasets[tags[5]]], axis = 0)
 # change Unknown to NaN
-df_all['predlab'].replace({'Unknown': np.nan, 'G2M': 'G2/M','G2.M':'G2/M', 'M.G1': 'M/Early G1', 'G0': 'Neural G0'}, inplace=True)
+df_all['predlab'].replace({'Unknown': np.nan, 'G2M': 'G2/M','G2.M':'G2/M', 'M.G1': 'M/Early G1'}, inplace=True)
+#df_all.dropna(inplace = True)
 
-# Compare adjusted mutual information score for each classifier
+# Tabulate AMIs
 ami_scores = {}
 for tag1 in tags:
     defined_cell_states = df_all[df_all['classifier'] == tag1]['truelab']
     compare_cell_states = df_all[df_all['classifier'] == tag1]['predlab']
     ami_scores[tag1] = adjusted_mutual_info_score(defined_cell_states[compare_cell_states.dropna().index], compare_cell_states.dropna())
 
-# number of states algorithm predicts
-lst = [8, 7, 3, 4, 6, 5, 4, 3, 7]
+#lst = [7, 4, 6, 5, 4, 8]
+lst = [7, 4, 6, 5, 4, 3, 8]
 x = np.array(lst)
 y = np.array(list(ami_scores.values()))
 descrip = np.array(tags)
 df2 = pd.DataFrame(y, descrip)
 df2.rename(columns={0:'AMI'}, inplace=True)
-df2.to_csv(resdir+'/'+data1+'/'+data1+'_AMI_cell_labels_reference.csv')
-df2.to_csv(resdir+'/'+data1+'/'+data1+'_AMI_cell_labels_reference_with_seurat_ccAFv2_model.csv')
+df2.to_csv(resdir+'/'+data1+'/'+data1+'_AMI_seurat_reference.csv')
 
+# Plot
 fig, ax = plt.subplots()
 fig, ax = plt.subplots(figsize=(10,8))
 ax.errorbar(x, y,
             fmt='o', ecolor = 'black')
 ax.set_xlabel('# of classes')
 ax.set_ylabel('Adjusted Mutual Information Score')
-ax.set_ylim(0,1.1)
-ax.set_xlim(0,10)
+ax.set_ylim(0,1)
+ax.set_xlim(0,8)
 for i, txt in enumerate(descrip):
     ax.annotate(txt, (x[i], y[i]))
-plt.savefig(resdir+'/'+data1+'/'+data1+'_AMI_number_classes_cell_labels_ref.pdf')
+plt.savefig(resdir+'/'+data1+'/'+data1+'_AMI_number_classes_seurat_ref.pdf')
 plt.clf()

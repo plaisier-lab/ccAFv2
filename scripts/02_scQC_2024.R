@@ -19,6 +19,8 @@
 
 # Run docker
 #docker run -it -v '/home/soconnor/old_home/ccNN/ccAFv2:/files' cplaisier/ccafv2_extra
+#docker run -it -v '/media:/files' cplaisier/ccafv2_seurat5
+#docker run -it -v '/home/soconnor/old_home:/files' cplaisier/ccafv2_seurat4
 
 #--------------------------------
 # Set up section / load packages

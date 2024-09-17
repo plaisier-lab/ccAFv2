@@ -33,9 +33,11 @@ library(gridExtra)
 library(writexl)
 library(data.table)
 library(readr)
+library(ggpubr)
 
 # Plotting order & colors
 ccAFv2_order = c('Neural G0', 'G1', 'Late G1', 'S', 'S/G2', 'G2/M', 'M/Early G1', 'Unknown')
+ccAF_colors = c("Neural G0" = "#d9a428", "G1" = "#f37f73", "Late G1" = "#1fb1a9",  "S" = "#8571b2", "S/G2" = "#db7092", "G2/M" = "#3db270" ,"M/Early G1" = "#6d90ca")
 ccAFv2_colors = c("Neural G0" = "#d9a428", "G1" = "#f37f73", "Late G1" = "#1fb1a9",  "S" = "#8571b2", "S/G2" = "#db7092", "G2/M" = "#3db270" ,"M/Early G1" = "#6d90ca",  "Unknown" = "#D3D3D3")
 ccSeurat_order = c('G1', 'S', 'G2M')
 ccSeurat_colors = c("G1" = "#f37f73", "S" = "#8571b2", "G2M" = "#3db270")
@@ -162,7 +164,6 @@ seurat2 <- SCTransform(seurat2, verbose = FALSE)
 #saveRDS(seurat2, file.path(resdir3, paste0(tag, "_normalized_ensembl_all_genes.rds")))
 #SaveH5Seurat(seurat2, overwrite = TRUE, file.path(resdir3, paste0(tag, "_normalized_ensembl_all_genes.h5Seurat")))
 #Convert(file.path(resdir3, paste0(tag, "_normalized_ensembl_all_genes.h5Seurat")), overwrite = TRUE, dest = "h5ad")
-
 
 # Downstream analysis
 seurat2 <- RunPCA(seurat2, verbose = FALSE)
@@ -304,10 +305,61 @@ DoHeatmap(object = seurat2, features = top10$gene)
 DoHeatmap(object = seurat2, features=unlist(goi_lst), group.colors = list(data.frame(ccAFv2_colors[sub1])$ccAFv2_colors.sub1.)[[1]]) + ggtitle("ccAF genes")
 # Cylin ridgeplots
 features <- c("CCND1", "CCNE2", "CCNA2", "CCNB1","CDK1","CDK2")
-print(RidgePlot(seurat2, features, ncol=2))
+#print(RidgePlot(seurat2, features, ncol=2))
+print(VlnPlot(seurat2, features = features, cols = ccAF_colors, ncol = 2, group.by = 'ccAF'))
 # Specific gene sets = proneural, mesenchymal, hypoxia, p53 targets
 p1 = lapply(goi_lst2, function(goi){
   goi = intersect(goi, rownames(seurat2))
   print(FeaturePlot(object = seurat2, features = goi, coord.fixed = TRUE))
 })
 dev.off()
+
+
+# Apply Quiescore
+library(devtools)
+install_github("https://github.com/dkornai/QuieScore")
+
+# Load library:
+library(QuieScore)
+
+# Load in data
+seurat2 = readRDS(file.path(resdir3, paste0(tag, "_normalized_gene_symbols.rds")))
+
+# Set up for QuieScore application
+mat.expr = data.frame(seurat2[['RNA']]@data)
+processedData <- processInput(mat.expr, cancer_type = "LGG", gene_naming = "name", log_transformed=FALSE)
+#processedData <- processInput(mat.expr, cancer_type = "GBM", gene_naming = "name", log_transformed=FALSE)
+
+G0scores <- QuiescenceScore(processedData)
+G0scores$G0 <- ifelse(G0scores$q_score_raw>3, 1, 0)
+seurat2$G0 = G0scores$G0
+
+# Order ccAFv2 calls
+sub1 = ccAFv2_order %in% factor(seurat2$ccAF)
+seurat2$ccAF <- factor(seurat2$ccAF, levels = ccAFv2_order[sub1])
+
+# Functions
+plotHyper = function(data, tag, save_dir = file.path(resdir2, 'U5')){
+  datas = data
+  savedir = save_dir
+  df = table(datas$ccAF, datas$G0)
+  colnames(df) = c('not G0', 'G0')
+  enrich = data.frame(matrix(NA, nrow = nrow(df), ncol = ncol(df)))
+  rownames(enrich) = rownames(df)
+  colnames(enrich) = colnames(df)
+  N = sum(df)
+  for (class1 in colnames(df)){
+    k = sum(df[,class1])
+    for (clust1 in rownames(df)){
+      m = sum(df[clust1,])
+      q = df[clust1, class1]
+      n = N-m
+      enrich[clust1,class1] = phyper(q, m, n, k, lower.tail = F)
+    }
+  }
+  pm = -log10(as.matrix(enrich))
+  #pm[pm>20] = 20
+  pdf(file.path(savedir, paste0(tag, '_ccAFv2_quiescore_heatmap.pdf')), height = 8, width = 8)
+  print(pheatmap(pm, cluster_cols = F, cluster_rows = F, colorRampPalette(c("white", "red"))(100), display_numbers = round(-log10(as.matrix(enrich)),2)))
+  dev.off()
+}
